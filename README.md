@@ -1,6 +1,6 @@
 # GPT龙娘气泡插件（自定义修改版）
 
-**个人定制分支 v2.0.0，基于原项目 v1.3.6 修改，仅供非商业使用。不是原作者发布的官方版本。**
+**个人定制分支 v2.0.1，基于原项目 v1.3.6 修改，仅供非商业使用。不是原作者发布的官方版本。**
 
 ## 原作出处与致谢
 
@@ -11,11 +11,17 @@
 
 感谢 T7moris 及原项目贡献者提供的挂件、角色基础素材、额度读取、语录、图库、音效和更新框架。本分支保留原作署名与许可；下方只列本定制版的改动，不将原有功能列为原创。其他仓库曾作为方案比较参考，不代表本分支合并了其中的代码。
 
+## 2.0.1 修复 / Hotfix
+
+修复点 X 关闭到后台后，双击龙娘唤出的 Codex 窗口可能无法交互的问题：改用客户端正常应用激活入口，让客户端自行执行显示与聚焦流程。普通最小化仍正常恢复。本机用户已实际完成“关闭到后台 → 双击唤出 → 点击操作”的验证。
+
+Fixed a potentially unresponsive Codex window after restoring it from close-to-background via the pet. Hidden/background windows now use normal application activation, allowing the client to run its own show/focus lifecycle; ordinary minimized windows retain their restore path. The close-to-background and double-click restore flow was confirmed interactively on the maintainer's computer.
+
 ## 下载与安装
 
 本修改版仓库：[holenc/codex-dragon-girl-custom](https://github.com/holenc/codex-dragon-girl-custom)
 
-1. 从[本修改版 Releases](https://github.com/holenc/codex-dragon-girl-custom/releases/latest)下载 `gpt-niang-usage-widget-v2.0.0-windows.zip` 与 `SHA256SUMS.txt`，核对校验值。
+1. 从[本修改版 Releases](https://github.com/holenc/codex-dragon-girl-custom/releases/latest)下载 `gpt-niang-usage-widget-v2.0.1-windows.zip` 与 `SHA256SUMS.txt`，核对校验值。
 2. 完整解压到长期保留的普通目录，双击 `安装GPT娘.cmd`。请先安装并登录 Codex 桌面客户端。需要 Node.js 24+；安装器优先使用已有 Node，或检测 Codex Primary Runtime 自带的 Node。
 3. 安装器在这台电脑重新生成程序路径、插件注册和启动配置；已有个人设置会保留，新安装使用定制版默认设置。安装包不包含作者的账户、聊天、授权记录或桌面坐标。
 4. 如使用授权气泡，请在 Codex 的 Hooks 页面检查并信任 GPT Niang 的 PermissionRequest Hook。不会替用户修改信任记录，也不会自动同意任何操作。
@@ -58,7 +64,7 @@
 
 ## English
 
-**GPT Dragon Girl Bubble Plugin — Custom Modified Edition, v2.0.0.** A personal, non-commercial fork based on **T7moris/GPT-Niang v1.3.6**, not an official upstream release.
+**GPT Dragon Girl Bubble Plugin — Custom Modified Edition, v2.0.1.** A personal, non-commercial fork based on **T7moris/GPT-Niang v1.3.6**, not an official upstream release.
 
 ### Original project and credits
 

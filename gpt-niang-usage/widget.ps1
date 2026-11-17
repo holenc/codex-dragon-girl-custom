@@ -48,6 +48,10 @@ public static class GptWidgetNative {
   [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
   [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr h,int command);
   [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("kernel32.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] static extern int GetApplicationUserModelId(IntPtr process,ref uint length,StringBuilder id);
+  public static string LastRestoreRoute {get;private set;}
+  public static string LastRestoreError {get;private set;}
+  public static long LastRestoreAt {get;private set;}
   [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h,uint f);
@@ -83,14 +87,54 @@ public static class GptWidgetNative {
     EnumWindows((h,p)=>{if(IsWindowVisible(h)&&!IsIconic(h)&&IsCodex(h)){found=h;return false;}return true;},IntPtr.Zero);
     return found;
   }
+  public static string SelectRestoreRoute(bool visible,bool iconic,bool foreground){
+    if(!visible)return "app-activation";
+    if(iconic)return "restore-minimized";
+    return foreground?"already-foreground":"app-activation";
+  }
+  public static string ApplicationIdForWindow(IntPtr target){
+    if(!IsCodex(target))return null;
+    using(var process=Process.GetProcessById(ProcessId(target))){
+      uint length=0;
+      if(GetApplicationUserModelId(process.Handle,ref length,null)!=122||length<2||length>1024)return null;
+      var id=new StringBuilder((int)length);
+      return GetApplicationUserModelId(process.Handle,ref length,id)==0?id.ToString():null;
+    }
+  }
+  static bool ActivateCodexApplication(IntPtr target){
+    using(var process=Process.GetProcessById(ProcessId(target))){
+      var file=process.MainModule.FileName;
+      if(!CodexExecutable(file))return false;
+      var id=ApplicationIdForWindow(target);
+      ProcessStartInfo start;
+      if(!String.IsNullOrEmpty(id)){
+        if(!id.StartsWith("OpenAI.Codex_",StringComparison.OrdinalIgnoreCase)||id.IndexOf('!')<0||id.IndexOfAny(new char[]{'"','\\','/',' '})>=0)throw new InvalidOperationException("Unexpected Codex application identity");
+        start=new ProcessStartInfo(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),"explorer.exe"));
+        start.Arguments="\"shell:AppsFolder\\"+id+"\"";
+      }else{
+        // Unpackaged desktop builds use Electron's existing-instance handler.
+        start=new ProcessStartInfo(file);start.WorkingDirectory=System.IO.Path.GetDirectoryName(file);
+      }
+      start.UseShellExecute=false;start.CreateNoWindow=true;
+      using(var launched=Process.Start(start)){return launched!=null;}
+    }
+  }
   public static bool RestoreCodex(IntPtr preferred){
+    LastRestoreAt=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();LastRestoreError=null;
     var target=IsCodex(preferred)?preferred:IntPtr.Zero;
     if(target==IntPtr.Zero)EnumWindows((h,p)=>{
       if(IsCodex(h)){target=h;return false;}return true;
     },IntPtr.Zero);
-    if(target==IntPtr.Zero)return false;
-    if(!IsWindowVisible(target)||IsIconic(target))ShowWindowAsync(target,9);
-    return SetForegroundWindow(target);
+    if(target==IntPtr.Zero){LastRestoreRoute="not-found";return false;}
+    var route=SelectRestoreRoute(IsWindowVisible(target),IsIconic(target),GetAncestor(GetForegroundWindow(),2)==target);
+    LastRestoreRoute=route;
+    try{
+      // Never force-show an Electron window closed to the background. Let the
+      // application's own activation handler run show/restore/focus lifecycle.
+      if(route=="app-activation")return ActivateCodexApplication(target);
+      if(route=="restore-minimized")ShowWindowAsync(target,9);
+      return SetForegroundWindow(target);
+    }catch(Exception error){LastRestoreError=error.Message;return false;}
   }
   public static int ProcessId(IntPtr h){uint p;GetWindowThreadProcessId(h,out p);return (int)p;}
   public static IntPtr ForegroundHost(IntPtr h){var root=GetAncestor(h,2);return IsCodex(root)?root:IntPtr.Zero;}
@@ -1030,7 +1074,7 @@ function Stop-WidgetRuntime {
   try{if($script:mutexOwned){$script:mutex.ReleaseMutex();$script:mutexOwned=$false}}catch{};try{$script:mutex.Dispose()}catch{}
 }
 function Write-WidgetPresence([bool]$visible,[long]$now){
-Write-WidgetJson (Join-Path $script:dataDir 'presence.json') @{visible=[bool]$visible;at=$now;host=$script:hostHandle.ToInt64();widget=$script:widgetHandle.ToInt64();pid=$PID;activity=(Get-WidgetActivityStatus);character=@{expression=$script:quotaExpressionKey;expressionError=$script:quotaExpressionError;id=$script:characterId;name=$script:activeCharacter.name;galleryOpen=[bool]($script:characterGallery -and $script:characterGallery.IsVisible)};sound=(Get-WidgetAudioStatus);followHost=$script:followHost;follow=@{ready=$script:hostFollower.Ready;events=$script:hostFollower.MovementEvents;mode='native-immediate';animationPaddingDip=14};sizing=@{character=$script:scale;bubble=$script:bubbleScale;display=$script:displayScale;preview=[bool]$script:settingsSizePreview};autoQuotes=@{enabled=$script:autoQuoteEnabled;intervalSeconds=$script:autoQuoteIntervalSeconds;nextAt=$script:autoQuoteNextAt;displayCount=$script:autoQuoteDisplayCount};completion=(Get-CompletionNotificationStatus);recovery=@{checks=$script:occlusionRecovery.Checks;toggles=$script:occlusionRecovery.Toggles;pending=$script:occlusionRecovery.Pending;cloaked=$script:occlusionRecovery.OwnedCloak;failed=$script:occlusionRecovery.Failed;hresult=$script:occlusionRecovery.LastHresult};music=(Get-WidgetMusicStatus);interaction=(Get-WidgetInteractionStatus);scene=@{open=!$script:collapsed;mode=$script:bubbleMode;resetTimeMode=$script:resetTimeMode;startedAt=$script:sceneStartedAt;closesAt=$script:sceneDeadline;shortReset=$script:ui.ShortReset.Text;weekReset=$script:ui.WeekReset.Text}}
+Write-WidgetJson (Join-Path $script:dataDir 'presence.json') @{visible=[bool]$visible;at=$now;host=$script:hostHandle.ToInt64();widget=$script:widgetHandle.ToInt64();pid=$PID;activation=@{route=[GptWidgetNative]::LastRestoreRoute;error=[GptWidgetNative]::LastRestoreError;at=[GptWidgetNative]::LastRestoreAt};activity=(Get-WidgetActivityStatus);character=@{expression=$script:quotaExpressionKey;expressionError=$script:quotaExpressionError;id=$script:characterId;name=$script:activeCharacter.name;galleryOpen=[bool]($script:characterGallery -and $script:characterGallery.IsVisible)};sound=(Get-WidgetAudioStatus);followHost=$script:followHost;follow=@{ready=$script:hostFollower.Ready;events=$script:hostFollower.MovementEvents;mode='native-immediate';animationPaddingDip=14};sizing=@{character=$script:scale;bubble=$script:bubbleScale;display=$script:displayScale;preview=[bool]$script:settingsSizePreview};autoQuotes=@{enabled=$script:autoQuoteEnabled;intervalSeconds=$script:autoQuoteIntervalSeconds;nextAt=$script:autoQuoteNextAt;displayCount=$script:autoQuoteDisplayCount};completion=(Get-CompletionNotificationStatus);recovery=@{checks=$script:occlusionRecovery.Checks;toggles=$script:occlusionRecovery.Toggles;pending=$script:occlusionRecovery.Pending;cloaked=$script:occlusionRecovery.OwnedCloak;failed=$script:occlusionRecovery.Failed;hresult=$script:occlusionRecovery.LastHresult};music=(Get-WidgetMusicStatus);interaction=(Get-WidgetInteractionStatus);scene=@{open=!$script:collapsed;mode=$script:bubbleMode;resetTimeMode=$script:resetTimeMode;startedAt=$script:sceneStartedAt;closesAt=$script:sceneDeadline;shortReset=$script:ui.ShortReset.Text;weekReset=$script:ui.WeekReset.Text}}
 }
 function Tick-Widget {
   if($script:updating){return}
