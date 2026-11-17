@@ -54,3 +54,50 @@
 代码沿用原项目 [MIT License](LICENSE)，保留 T7moris 和原项目贡献者版权声明。龙娘图片及派生表情**不属于代码 MIT 的商业授权范围**，仅作为本项目非商业副本的一部分分发；不得作为独立素材包或商业素材使用。详见 [角色素材声明](gpt-niang-usage/assets/CHARACTER-NOTICE.txt)、[语录许可](gpt-niang-usage/assets/quotes-LICENSE.txt)和[生成说明](gpt-niang-usage/assets/生成说明.md)。
 
 新增的流口水、闭眼和美元眼为基于原角色的修改素材，遵循相同使用范围。本分支不主张拥有参考角色、第三方图像或商标的权利。
+
+
+## English
+
+**GPT Dragon Girl Bubble Plugin — Custom Modified Edition, v2.0.0.** A personal, non-commercial fork based on **T7moris/GPT-Niang v1.3.6**, not an official upstream release.
+
+### Original project and credits
+
+- Original repository: [T7moris/GPT-Niang](https://github.com/T7moris/GPT-Niang)
+- Original releases: [upstream downloads](https://github.com/T7moris/GPT-Niang/releases)
+- Original Bilibili video: [GPT龙娘气泡插件 — BV1Kga666EyT](https://www.bilibili.com/video/BV1Kga666EyT/)
+- Original documentation and contributor credits: [UPSTREAM-README.md](UPSTREAM-README.md), [UPSTREAM-CHANGELOG.md](UPSTREAM-CHANGELOG.md).
+
+Thanks to T7moris and all upstream contributors for the original widget, character artwork, quota reader, quotes, gallery, audio and update framework. This fork preserves their attribution and license notices. The following list describes the custom changes, not ownership of upstream features.
+
+### What changed in this fork
+
+1. **Codex-linked lifecycle:** the widget appears when Codex starts, stays available while Codex is minimized or running in the background, and closes when Codex fully exits.
+2. **Double-click to restore Codex:** single-click still opens quota information; double-click brings the minimized or background Codex window forward.
+3. **Purchased credits and USD estimate:** a third quota row shows the official remaining credit balance and an estimate using `500 credits = USD 20`. This is a display estimate, not a billing or refund balance.
+4. **Clear quota colors:** progress bars and percentages are green normally and red at 25% remaining or less, preserving the existing warning threshold.
+5. **Quota-based expressions:** normal artwork stays unchanged. An exhausted five-hour allowance with no purchased credits shows the drooling expression; with weekly allowance below 5%, it shows the previously approved closed-eye expression. Remaining purchased credits select the simplified dollar-eye artwork with the original highlights retained.
+6. **Failure expression override:** a confirmed failed turn takes priority and shows the drooling expression. The normal quota expression returns after resolution. Normal cancellation and individual tool errors followed by retries do not trigger this override.
+7. **Running-chat counter:** purple `......` beside the horn changes to `3......` for concurrent chats, capped at 99. It counts chats, not individual tool calls.
+8. **Waiting counter:** a purple `+1`, `+2`, etc. appears on the line above. Waiting and running are tracked separately; asynchronous questions can coexist with active work.
+9. **Embedded interaction queue:** approval and question notices use the original speech bubble. Approvals take priority; approvals and ordinary questions each keep their own chronological order.
+10. **Per-request approval buttons:** valid PermissionRequest hook requests can be allowed or denied once, with request identity and validity checks. Unsupported prompts open Codex instead; free-text answers still use Codex.
+11. **Longer waits and lifecycle cleanup:** the hook runs for up to about 24 hours, then hands back to Codex with a read-only mirror. Expired buttons cannot submit decisions. Notices are reconciled using replies, subsequent user input, cancellation and turn state. Some native browser/login prompts still require the main app.
+12. **Restart recovery and deduplication:** counters recover from the latest turn per chat, filtering subagents and old process records. An unavailable state source shows `?` instead of inventing a zero count.
+13. **Automation-start notifications:** recurring and one-time scheduled tasks display their chat's latest title when triggered.
+14. **Custom completion message:** one bubble shows `已严肃回复` and `ᗜˬᗜ` on separate lines.
+15. **Startup and layout refinements:** windowless launchers, no long hover instruction tooltip, revised quota spacing and larger purple horn-side indicators. Defaults are silent, with automatic idle quotes disabled and separate character/bubble scales.
+16. **Independent update source:** only this repository's stable Releases are accepted; upstream download URLs are rejected to protect the custom changes.
+
+### Installation and updates
+
+Download the Windows ZIP and `SHA256SUMS.txt` from [this fork's Releases](https://github.com/holenc/codex-dragon-girl-custom/releases/latest), verify the hash, extract the entire package to a permanent ordinary folder, and run `安装GPT娘.cmd`. Requires a signed-in Codex desktop client and Node.js 24+. The installer can detect the Node bundled with Codex Primary Runtime.
+
+Machine-specific paths and plugin registration are regenerated locally. Existing preferences are retained; a fresh installation uses the custom defaults. Approval bubbles require reviewing and trusting the hook in Codex's Hooks page. The installer never grants trust or approves requests on your behalf.
+
+Automatic update checks run **once on each widget startup**, with no periodic checks while it stays running. Manual checks remain available. A new version requires a higher version tag and matching Windows ZIP plus `SHA256SUMS.txt` release assets; editing source files or the README alone does not trigger an update. Downloads are checksum-verified and use the existing idle-install/recovery mechanism. Git source checkouts are protected from replacement and maintained manually.
+
+Windows local Codex sessions only; ordinary ChatGPT web chats are not integrated. Task-state parsing was adapted to Codex desktop 26.1111.2228.0 and may need maintenance when client internals change. Other computers and future client versions have not been fully validated.
+
+### License and artwork
+
+Code retains the upstream [MIT License](LICENSE) and copyright notices. Character artwork and derived expressions are **not covered by the code's commercial-use grant**. They are distributed only as part of this non-commercial project copy, not as standalone or commercial assets. Preserve [CHARACTER-NOTICE.txt](gpt-niang-usage/assets/CHARACTER-NOTICE.txt), [quote licensing](gpt-niang-usage/assets/quotes-LICENSE.txt) and [artwork provenance](gpt-niang-usage/assets/生成说明.md). Third-party character, image and trademark rights remain with their respective owners.

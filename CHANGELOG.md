@@ -14,3 +14,7 @@
 - 移除长悬浮说明，微调气泡和右侧龙角旁的紫色角标。
 - 更新源改为 holenc/codex-dragon-girl-custom，停止从上游仓库覆盖更新。
 - 补齐脱敏发布、Node.js 24 检测、新设备默认设置和原作署名说明。
+
+## English — v2.0.0
+
+Initial custom fork based on upstream v1.3.6. Added purchased-credit/USD display, quota and failure expressions, running/waiting counters, embedded approval queues, restart recovery, scheduled-task title notifications, windowless startup, and independent startup-only updates. Original repository, Bilibili video, contributor credits and license notices are preserved. See README for the itemized bilingual comparison and current limitations.
