@@ -1,13 +1,13 @@
 {
   "name": "gpt-niang-usage",
-  "version": "2.0.1",
-  "description": "基于 T7moris/GPT-Niang v1.3.6 的个人非商业定制版，禁用上游自动更新。",
+  "version": "2.0.2",
+  "description": "Windows 桌面额度、任务状态与授权气泡插件。",
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "GPT龙娘气泡插件（自定义修改版）",
+    "displayName": "GPT龙娘气泡插件",
     "shortDescription": "额度、充值余额、任务状态与授权气泡。",
     "longDescription": "按用户角色参考制作的 Windows 本地挂件。可选 Codex 窗口内或整个桌面模式，支持拖动、缩放和桌面置顶，每分钟读取官方订阅额度，点击角色展开剩余额度与语录气泡。",
-    "developerName": "T7moris 及原项目贡献者；holenc 定制修改",
+    "developerName": "T7moris 及原项目贡献者；后续维护者",
     "category": "Productivity",
     "capabilities": [
       "Interactive"

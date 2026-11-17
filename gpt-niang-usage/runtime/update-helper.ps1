@@ -103,7 +103,8 @@ function Copy-WidgetVerifiedTree([string]$Source,[string]$Destination) {
 function Copy-WidgetUnmanagedRootItems($Journal,[switch]$EmbeddedData) {
   # Legacy installs often share their outer folder with screenshots and downloads.
   $managed=@('.agents','gpt-niang-usage','.gitignore','LICENSE','README.md','更新记录.md','SHA256SUMS.txt',
-    '安装GPT娘.cmd','打开GPT娘.cmd','停用GPT娘.cmd','检测套餐.cmd')
+    '安装GPT娘.cmd','打开GPT娘.cmd','停用GPT娘.cmd','检测套餐.cmd',
+    'tools','CHANGELOG.md','UPSTREAM-README.md','UPSTREAM-CHANGELOG.md')
   # PowerShell 5.1 may decode UTF-8 scripts using a non-Chinese system code page.
   $historicalNote=([string][char]0x672C+[char]0x673A+[char]0x4FEE+[char]0x8BA2+'-20261025.md')
   $sharedReleaseFiles=@('.gitattributes',$historicalNote)

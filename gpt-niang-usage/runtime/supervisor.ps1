@@ -73,27 +73,17 @@ function Get-WidgetSupervisorRunningGui([string]$DataDir,[string]$ExpectedAppDir
       $gap=($recorded-$process.StartTime.ToUniversalTime()).TotalSeconds
       if($gap-lt 0 -or $gap-gt 120){return $false}
     }
+    $identity=[string]$runtime.pid+':'+$process.StartTime.ToUniversalTime().Ticks
+    if($script:verifiedGuiIdentity-eq $identity){return $true}
     $command=(Get-CimInstance Win32_Process -Filter ('ProcessId='+[int]$runtime.pid) -ErrorAction Stop).CommandLine
     $scriptFile=Join-Path $ExpectedAppDir 'widget.ps1'
-    return $command.IndexOf(('"'+$scriptFile+'"'),[StringComparison]::OrdinalIgnoreCase)-ge 0
+    $valid=$command.IndexOf(('"'+$scriptFile+'"'),[StringComparison]::OrdinalIgnoreCase)-ge 0
+    if($valid){$script:verifiedGuiIdentity=$identity}
+    return $valid
   }catch{return $false}finally{if($process){$process.Dispose()}}
 }
 
-function Test-WidgetCodexDesktopProcess($Process,[int]$SessionId) {
-  return $Process.SessionId-eq $SessionId -and
-    $Process.Name-in @('ChatGPT.exe','Codex.exe') -and
-    $Process.ExecutablePath-match '(?i)\\(?:OpenAI\.Codex_[^\\]+\\app|OpenAI\\Codex(?:\\app)?)\\(?:ChatGPT|Codex)\.exe$' -and
-    [string]$Process.CommandLine -and $Process.CommandLine-notmatch '(?i)(?:^|\s)--type(?:=|\s)'
-}
-function Test-WidgetCodexDesktopRunning {
-  $sessionId=[Diagnostics.Process]::GetCurrentProcess().SessionId
-  $processes=@(Get-CimInstance Win32_Process -Filter "Name='ChatGPT.exe' OR Name='Codex.exe'" -ErrorAction Stop)
-  $desktopProcesses=@($processes|Where-Object{Test-WidgetCodexDesktopProcess $_ $sessionId})
-  $desktopIds=@($desktopProcesses.ProcessId)
-  $servers=@($processes|Where-Object{$_.ParentProcessId-in $desktopIds -and $_.Name-ieq 'codex.exe' -and $_.CommandLine-match '\bapp-server\b'}|Sort-Object CreationDate)
-  $script:activityAppServerStartedAt=if($servers.Count){$servers[0].CreationDate.ToUniversalTime().ToString('o')}else{$null}
-  return $desktopProcesses.Count-gt 0
-}
+. (Join-Path $PSScriptRoot 'codex-lifetime.ps1')
 
 if($CheckOnly){return [pscustomobject]@{ok=$true;info=$info;hosts=@([GptWidgetSupervisorNative]::Hosts());codexRunning=(Test-WidgetCodexDesktopRunning)}}
 
@@ -106,10 +96,11 @@ $nextLaunch=[DateTime]::MinValue
 $nextStatus=[DateTime]::MinValue
 $lastVisibleHostKey=''
 $pendingGui=$null
-$codexAbsentSince=$null
+$lifetimeChanged=$true
 $supervisorProcess=Get-Process -Id $PID
 try{$processStartedAt=$supervisorProcess.StartTime.ToUniversalTime().ToString('o')}finally{$supervisorProcess.Dispose()}
 try{
+  $lifetimeSignal=[GptWidgetLifetimeSignal]::new([Diagnostics.Process]::GetCurrentProcess().SessionId)
   while($true){
     if((Test-Path -LiteralPath (Join-Path $info.DataDir 'supervisor-disabled.flag')) -or (Test-Path -LiteralPath (Join-Path $info.DataDir 'supervisor-stop.flag'))){break}
     try{
@@ -118,9 +109,7 @@ try{
       $desktop=$settings -and $null-ne $settings.followHost -and !$settings.followHost
       # Desktop mode follows the desktop application's lifetime, including tray
       # residency. Renderer processes and quota CLI workers must not keep it alive.
-      $codexRunning=Test-WidgetCodexDesktopRunning
-      if($codexRunning){$codexAbsentSince=$null}
-      elseif($null-eq $codexAbsentSince){$codexAbsentSince=[DateTime]::UtcNow}
+      $codexRunning=Test-WidgetCodexDesktopRunning -Refresh:$lifetimeChanged
       $pause=$null;try{$pause=Get-Content -LiteralPath $pauseFile -Raw -Encoding UTF8|ConvertFrom-Json}catch{}
       $paused=Test-WidgetSupervisorPause $pause $hosts
       if($pause -and !$paused){Remove-Item -LiteralPath $pauseFile -ErrorAction SilentlyContinue}
@@ -131,7 +120,7 @@ try{
       # Retain the launch handle until startup finishes, so slow WPF startup
       # cannot create another GUI process before runtime.json is available.
       if($pendingGui -and ($running -or $pendingGui.HasExited)){$pendingGui.Dispose();$pendingGui=$null}
-      if($desktop -and !$codexRunning -and ($running -or $pendingGui) -and ([DateTime]::UtcNow-$codexAbsentSince).TotalSeconds-ge 3){
+      if($desktop -and !$codexRunning -and ($running -or $pendingGui)){
         Stop-WidgetGui -AppDir $info.AppDir -DataDir $info.DataDir
         $running=$false
         if($pendingGui){$pendingGui.Dispose();$pendingGui=$null}
@@ -148,13 +137,15 @@ try{
         $pendingGui=[Diagnostics.Process]::Start($guiStart)
       }
       if([DateTime]::UtcNow-ge $nextStatus){
-        Write-WidgetSupervisorJson (Join-Path $info.DataDir 'supervisor-status.json') @{pid=$PID;processStartedAt=$processStartedAt;appServerStartedAt=$script:activityAppServerStartedAt;at=[DateTime]::UtcNow.ToString('o');mainWindows=$hosts.Count;visibleWindows=$visible.Count;paused=$paused;widgetRunning=$running;codexRunning=$codexRunning;desktopBoundToCodex=$desktop;taskName=$info.TaskName}
+        Write-WidgetSupervisorJson (Join-Path $info.DataDir 'supervisor-status.json') @{pid=$PID;processStartedAt=$processStartedAt;appServerStartedAt=$script:activityAppServerStartedAt;at=[DateTime]::UtcNow.ToString('o');mainWindows=$hosts.Count;visibleWindows=$visible.Count;paused=$paused;widgetRunning=$running;codexRunning=$codexRunning;desktopBoundToCodex=$desktop;lifetimeEvents=$lifetimeSignal.Available;lifetimeIntervalMs=250;taskName=$info.TaskName}
         $nextStatus=[DateTime]::UtcNow.AddSeconds(5)
       }
     }catch{try{[IO.File]::WriteAllText((Join-Path $info.DataDir 'supervisor-error.txt'),$_.Exception.Message)}catch{}}
-    Start-Sleep -Milliseconds 1500
+    $lifetimeChanged=$lifetimeSignal.Wait(250)
   }
 }finally{
+  if($lifetimeSignal){$lifetimeSignal.Dispose()}
+  Clear-WidgetLifetimeProcesses
   if($pendingGui){$pendingGui.Dispose()}
   try{
     $statusFile=Join-Path $info.DataDir 'supervisor-status.json'

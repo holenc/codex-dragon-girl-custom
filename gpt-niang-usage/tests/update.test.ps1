@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $source=Split-Path $PSScriptRoot -Parent
 # Dot source into this test scope; no task/shortcut/CLI installation is performed.
 . (Join-Path $source 'runtime\update-helper.ps1') -FunctionsOnly
@@ -86,6 +86,16 @@ try {
   $hashFile=Join-Path $testRoot 'sha-test.txt';[IO.File]::WriteAllText($hashFile,'abc')
   Assert ((Get-WidgetFileHash $hashFile)-eq 'BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD') 'SHA256 works without Get-FileHash module autoload'
   $journal=New-Fixture 'upgrade'
+  # Real 2.x packages ship these items; their absence from the old fixture hid
+  # a collision that blocked 2.0.0 -> 2.0.1 before installation even began.
+  foreach($name in @('CHANGELOG.md','UPSTREAM-README.md','UPSTREAM-CHANGELOG.md')){
+    [IO.File]::WriteAllText((Join-Path $journal.root $name),'previous release documentation')
+    [IO.File]::WriteAllText((Join-Path $journal.candidate $name),'new release documentation')
+  }
+  foreach($directory in @($journal.root,$journal.candidate)){
+    $null=New-Item -ItemType Directory -Path (Join-Path $directory 'tools')
+    [IO.File]::WriteAllText((Join-Path $directory 'tools\build-release.ps1'),'release build tool')
+  }
   $historicalNote=([string][char]0x672C+[char]0x673A+[char]0x4FEE+[char]0x8BA2+'-20261025.md')
   foreach($name in @('.gitattributes',$historicalNote)){
     [IO.File]::WriteAllText((Join-Path $journal.root $name),'unchanged shipped root file')
@@ -96,6 +106,8 @@ try {
   [IO.File]::WriteAllText((Join-Path $personal 'old-package.zip'),'manually downloaded archive')
   Invoke-WidgetUpdateTransaction $journal $script:agent $journal.token
   Assert ($journal.phase-eq 'committed') 'upgrade commits after registration and real heartbeat validation'
+  Assert ([IO.File]::ReadAllText((Join-Path $journal.root 'CHANGELOG.md'))-eq 'new release documentation') 'shipped release documentation upgrades without a personal-file collision'
+  Assert (Test-Path -LiteralPath (Join-Path $journal.root 'tools\build-release.ps1')) 'shipped tools survive upgrade'
   Assert ((Read-WidgetUpdateJson (Join-Path $journal.appDir 'installation.json')).version-eq '1.3.3') 'new plugin version registered'
   Assert (!(Test-Path -LiteralPath $journal.backup) -and !$journal.cleanupPending) 'confirmed upgrade removes the complete previous program backup'
   Assert (!(Test-Path -LiteralPath (Split-Path $journal.archive -Parent))) 'confirmed upgrade removes the archive and extracted cache'
@@ -238,6 +250,7 @@ try {
     Exit-WidgetUpdateLock $helper
     Assert (!(Read-WidgetUpdateJson (Join-Path $lock.Directory 'owner.json')).helperPid) 'cleanup helper returns its claim before the install helper starts'
   }finally{Exit-WidgetUpdateLock $lock}
+  $script:appDir=$source
   $script:dataDir=Join-Path $testRoot 'ui-preferences';$null=New-Item -ItemType Directory -Path $script:dataDir
   $script:settingsMenuUi=@{}
   Initialize-WidgetUpdater;Assert $script:autoUpdate 'WPF automatic-update default is on'

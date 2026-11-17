@@ -219,7 +219,7 @@ function Initialize-WidgetSettingsMenu {
   $script:settingsMenuUi.Updates=Add-SettingsSubmenu '更新' {
     $script:settingsMenuUi.UpdateVersion=Add-SettingsAction '当前版本' {} -ReturnItem;$script:settingsMenuUi.UpdateVersion.IsEnabled=$false
     Add-SettingsAction '检查定制版更新' {Start-WidgetUpdate 'manual'}
-    $script:settingsMenuUi.AutoUpdate=Add-SettingsAction '自动更新（仅本定制仓库）' {param($sender,$event)Set-WidgetAutomaticUpdate ([bool]$sender.IsChecked)} -Checkable -ReturnItem
+    $script:settingsMenuUi.AutoUpdate=Add-SettingsAction '自动更新（每天检查）' {param($sender,$event)Set-WidgetAutomaticUpdate ([bool]$sender.IsChecked)} -Checkable -ReturnItem
     $status=New-SettingsText '' 12 '#927AAB';$status.TextWrapping=[Windows.TextWrapping]::Wrap
     $script:settingsMenuUi.UpdateStatus=Add-SettingsPanel $status -Passive -ReturnItem
   } -ReturnItem

@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {atomicJson} from './usage.mjs';
 
 export const DAY = 86400000;
-export const CHECK_INTERVAL = 30 * 60 * 1000;
+export const CHECK_INTERVAL = DAY;
 export const RELEASE_API = 'https://api.github.com/repos/holenc/codex-dragon-girl-custom/releases/latest';
 const RELEASE_PATH = '/holenc/codex-dragon-girl-custom/releases/download/';
 const MAX_ZIP = 50 * 1024 * 1024, MAX_EXPANDED = 100 * 1024 * 1024;
@@ -286,7 +286,7 @@ async function performUpdate(config,{mode='manual',agentDir=config.updateAgent??
   const state=read(stateFile)??{};const report=value=>atomicJson(stateFile,Object.assign(state,value));
   const custom=read(path.join(config.appDir,'custom-build.json'));
   if(custom?.updates?.mode==='manual-only' && mode!=='cleanup'){
-    report({phase:'manual-only',message:'个人定制版仅手动维护，已禁用上游下载与覆盖安装。',nextCheckAt:0});return;
+    report({phase:'manual-only',message:'自动更新已关闭，请手动更新。',nextCheckAt:0});return;
   }
   if(isGitCheckout(config.appDir)){report({phase:'source',message:'源码目录请使用 Git 更新，或另行安装 Release。'});return;}
   if(Date.now()<(state.retryAfterAt??0)){report({phase:'rate-limited',message:'GitHub 限流，请在允许重试的时间之后检查。'});return;}
@@ -302,7 +302,7 @@ async function performUpdate(config,{mode='manual',agentDir=config.updateAgent??
       if(readTransaction(path.join(agentDir,'update-transaction.json'))?.cleanupPending)throw new Error('Previous update cleanup is still pending');
     }
     if(mode==='cleanup')return;
-    report({phase:'checking',message:'正在检查自定义修改版…',nextCheckAt:Date.now()+CHECK_INTERVAL,retryAfterAt:0});
+    report({phase:'checking',message:'正在检查更新…',nextCheckAt:Date.now()+CHECK_INTERVAL,retryAfterAt:0});
     const release=JSON.parse((await fetchBytes(RELEASE_API,{api:true,limit:1024*1024})).toString('utf8'));
     const selected=selectRelease(release,config.version);
     if(!selected){report({phase:'current',message:'已是最新正式版。'});return;}

@@ -13,7 +13,7 @@ function Copy-ReleaseFile($Source,$Relative){
   $null=[IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
   [IO.File]::Copy($Source,$target,$false)
 }
-foreach($name in @('README.md','CHANGELOG.md','LICENSE','UPSTREAM-README.md','UPSTREAM-CHANGELOG.md','安装GPT娘.cmd','打开GPT娘.cmd','停用GPT娘.cmd','检测套餐.cmd')){
+foreach($name in @('README.md','CHANGELOG.md','RELEASE-NOTES.md','LICENSE','UPSTREAM-README.md','UPSTREAM-CHANGELOG.md','安装GPT娘.cmd','打开GPT娘.cmd','停用GPT娘.cmd','检测套餐.cmd')){
   Copy-ReleaseFile (Join-Path $root $name) $name
 }
 foreach($dir in @('.agents','gpt-niang-usage/assets','gpt-niang-usage/runtime','gpt-niang-usage/tests','gpt-niang-usage/.codex-plugin','tools')){
@@ -37,9 +37,29 @@ foreach($file in Get-ChildItem -LiteralPath $stage -Recurse -File -Force|Where-O
   }
 }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+# Keep GitHub source/docs complete, but make the downloadable root compatible
+# with 2.0.0's fixed managed-root list. Additional documents/tools live inside
+# the managed app directory, so the old helper can install its own replacement.
+$portable=Join-Path $out 'download/GPT娘额度挂件'
+$null=[IO.Directory]::CreateDirectory($portable)
+foreach($name in @('.agents','gpt-niang-usage','.gitignore','LICENSE','README.md','安装GPT娘.cmd','打开GPT娘.cmd','停用GPT娘.cmd','检测套餐.cmd')){
+  Copy-Item -LiteralPath (Join-Path $stage $name) -Destination $portable -Recurse
+}
+$docs=Join-Path $portable 'gpt-niang-usage/docs'
+$null=[IO.Directory]::CreateDirectory($docs)
+foreach($name in @('CHANGELOG.md','RELEASE-NOTES.md','UPSTREAM-README.md','UPSTREAM-CHANGELOG.md')){
+  Copy-Item -LiteralPath (Join-Path $stage $name) -Destination $docs
+}
+Copy-Item -LiteralPath (Join-Path $stage 'tools') -Destination (Join-Path $portable 'gpt-niang-usage/tools') -Recurse
+# Root README links work both in the checkout and the portable download.
+$readme=[IO.File]::ReadAllText((Join-Path $portable 'README.md'))
+foreach($name in @('CHANGELOG.md','RELEASE-NOTES.md','UPSTREAM-README.md','UPSTREAM-CHANGELOG.md')){
+  $readme=$readme.Replace(']('+$name+')','](gpt-niang-usage/docs/'+$name+')')
+}
+[IO.File]::WriteAllText((Join-Path $portable 'README.md'),$readme,[Text.UTF8Encoding]::new($false))
 $zipName='gpt-niang-usage-widget-v'+$version+'-windows.zip'
 $zip=Join-Path $out $zipName
-[IO.Compression.ZipFile]::CreateFromDirectory($stage,$zip,[IO.Compression.CompressionLevel]::Optimal,$true)
+[IO.Compression.ZipFile]::CreateFromDirectory($portable,$zip,[IO.Compression.CompressionLevel]::Optimal,$true)
 $hash=(Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText((Join-Path $out 'SHA256SUMS.txt'),$hash+'  '+$zipName+"`n",[Text.UTF8Encoding]::new($false))
 [pscustomobject]@{version=$version;source=$stage;zip=$zip;sha256=$hash;bytes=(Get-Item $zip).Length}|ConvertTo-Json

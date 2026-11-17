@@ -1,6 +1,6 @@
-# GPT龙娘气泡插件（自定义修改版）
+# GPT龙娘气泡插件
 
-**个人定制分支 v2.0.1，基于原项目 v1.3.6 修改，仅供非商业使用。不是原作者发布的官方版本。**
+**v2.0.2 · Windows 桌面额度、任务状态与授权气泡。仅供非商业使用。**
 
 ## 原作出处与致谢
 
@@ -9,21 +9,26 @@
 - 原 B 站视频：[GPT龙娘气泡插件 · BV1Kga666EyT](https://www.bilibili.com/video/BV1Kga666EyT/)
 - 原作者及贡献者的完整说明：[原项目 README](UPSTREAM-README.md)、[原项目更新记录](UPSTREAM-CHANGELOG.md)。
 
-感谢 T7moris 及原项目贡献者提供的挂件、角色基础素材、额度读取、语录、图库、音效和更新框架。本分支保留原作署名与许可；下方只列本定制版的改动，不将原有功能列为原创。其他仓库曾作为方案比较参考，不代表本分支合并了其中的代码。
+感谢 T7moris 及原项目贡献者提供的挂件、角色基础素材、额度读取、语录、图库、音效和更新框架。本分支保留原作署名与许可；下方列出本项目的后续改动，不将原有功能列为原创。其他仓库曾作为方案比较参考，不代表本分支合并了其中的代码。
 
-## 2.0.1 修复 / Hotfix
+## 2.0.2 更新
 
-修复点 X 关闭到后台后，双击龙娘唤出的 Codex 窗口可能无法交互的问题：改用客户端正常应用激活入口，让客户端自行执行显示与聚焦流程。普通最小化仍正常恢复。本机用户已实际完成“关闭到后台 → 双击唤出 → 点击操作”的验证。
+- 改进随 Codex 启停的响应：监听进程启动/退出，保留进程句柄核对退出状态，减少反复查询；事件不可用时自动回退核对。
+- 取消彻底退出后的固定 3 秒等待。桌面模式不再等待 Codex 界面加载检测；窗口跟随模式保留界面就绪检查。
+- 点 X 关闭到后台、普通最小化仍保留龙娘；彻底退出 Codex 才关闭龙娘。
+- 修复更新器把发行包自带的 `tools` 和说明文件误当作个人文件，阻止升级的问题。
+- 自动更新使用本仓库：启动时检查一次，持续运行期间每 24 小时再检查一次；保留手动检查与限流退避。
+- 版本菜单和更新提示简化名称，隐藏内部构建标识。
 
-Fixed a potentially unresponsive Codex window after restoring it from close-to-background via the pet. Hidden/background windows now use normal application activation, allowing the client to run its own show/focus lifecycle; ordinary minimized windows retain their restore path. The close-to-background and double-click restore flow was confirmed interactively on the maintainer's computer.
+**从 2.0.0 / 2.0.1 升级：**本版下载包采用兼容旧更新器的目录布局，可在龙娘菜单中检查更新。更新后确认显示 **2.0.2**。若此前失败留下异常状态，可退出龙娘，将本版完整覆盖到原安装目录后运行 `安装GPT娘.cmd`；保留 `installation.json` 与个人数据，不要先卸载或删除配置。
 
 ## 下载与安装
 
-本修改版仓库：[holenc/codex-dragon-girl-custom](https://github.com/holenc/codex-dragon-girl-custom)
+本项目仓库：[holenc/codex-dragon-girl-custom](https://github.com/holenc/codex-dragon-girl-custom)
 
-1. 从[本修改版 Releases](https://github.com/holenc/codex-dragon-girl-custom/releases/latest)下载 `gpt-niang-usage-widget-v2.0.1-windows.zip` 与 `SHA256SUMS.txt`，核对校验值。
+1. 从[本项目 Releases](https://github.com/holenc/codex-dragon-girl-custom/releases/latest)下载 `gpt-niang-usage-widget-v2.0.2-windows.zip` 与 `SHA256SUMS.txt`，核对校验值。
 2. 完整解压到长期保留的普通目录，双击 `安装GPT娘.cmd`。请先安装并登录 Codex 桌面客户端。需要 Node.js 24+；安装器优先使用已有 Node，或检测 Codex Primary Runtime 自带的 Node。
-3. 安装器在这台电脑重新生成程序路径、插件注册和启动配置；已有个人设置会保留，新安装使用定制版默认设置。安装包不包含作者的账户、聊天、授权记录或桌面坐标。
+3. 安装器在这台电脑重新生成程序路径、插件注册和启动配置；已有个人设置会保留，新安装使用默认设置。安装包不包含作者的账户、聊天、授权记录或桌面坐标。
 4. 如使用授权气泡，请在 Codex 的 Hooks 页面检查并信任 GPT Niang 的 PermissionRequest Hook。不会替用户修改信任记录，也不会自动同意任何操作。
 
 只支持 Windows 本地 Codex 会话。当前任务状态读取适配了 Codex 桌面客户端 26.1111.2228.0 的本机日志与状态数据库；客户端结构变化时可能需要跟进维护。普通 ChatGPT 网页对话没有接入。
@@ -45,11 +50,11 @@ Fixed a potentially unresponsive Codex window after restoring it from close-to-b
 13. **所有定时任务启动提醒。** 循环任务和一次性倒计时触发时，读取对应对话的最新标题显示提示，不固定绑定某一个任务。
 14. **完成提示定制。** 同一气泡两行显示“已严肃回复”和“ᗜˬᗜ”。
 15. **启动与界面细节。** 使用无窗口启动入口，移除角色上的长操作说明悬浮提示；调整额度排版、角标字号与位置。默认静音，关闭自动闲聊，人物与气泡分别缩放。
-16. **独立更新源。** 只检查本仓库的正式 Release，拒绝原作者仓库的下载地址，防止定制内容被原版覆盖。
+16. **独立更新源。** 自动更新直接使用本仓库的正式 Release，原作者仓库与视频链接保留在出处说明中。
 
 ## 自动更新与版本规则
 
-- 更新源固定为本仓库，仅在每次启动龙娘后自动检查一次，运行期间不再定时轮询。可手动检查；GitHub 限流时退避，不是秒级推送。
+- 更新源为本仓库，启动时检查一次，持续运行期间每隔 24 小时再检查一次。可手动检查；GitHub 限流时退避，不是秒级推送。
 - 发布更新必须提高版本号，并在对应 Release 上传同版本 Windows ZIP 和 `SHA256SUMS.txt`。仅推送源码或修改 README 不会触发客户端升级。
 - 下载后校验 SHA256，沿用原版的空闲安装、恢复与回滚机制，保留数据目录中的个人设置。
 - 源码检出目录受 Git 保护，不由更新器覆盖；维护者在源码目录手动修改。其他电脑从 Release 安装的普通目录可自动更新。
@@ -64,7 +69,18 @@ Fixed a potentially unresponsive Codex window after restoring it from close-to-b
 
 ## English
 
-**GPT Dragon Girl Bubble Plugin — Custom Modified Edition, v2.0.1.** A personal, non-commercial fork based on **T7moris/GPT-Niang v1.3.6**, not an official upstream release.
+**GPT Dragon Girl Bubble Plugin, v2.0.2.** Windows quota, task-state and approval bubbles. Non-commercial use only.
+
+### Version 2.0.2
+
+- Listen for Codex process start/exit events and retain validated process handles, with fallback reconciliation when events are unavailable.
+- Remove the fixed three-second exit delay. Desktop mode no longer waits for Codex interface readiness; window-follow mode retains readiness checks.
+- Keep the pet while Codex is minimized or closed to the background; close it when Codex fully exits.
+- Fix upgrades blocked by shipped `tools` and documentation being mistaken for personal files.
+- Check this repository for updates at startup and every 24 hours while running. Manual checks and rate-limit backoff remain available.
+- Simplify version labels and hide internal build identifiers.
+
+**Upgrading from 2.0.0 / 2.0.1:** this download uses a layout compatible with the old updater. Check for updates in the pet menu and confirm **2.0.2** afterwards. If an earlier failure left an abnormal update state, exit the pet, extract the complete release over the original installation, and run `安装GPT娘.cmd`. Keep `installation.json` and personal data; do not uninstall or delete settings first.
 
 ### Original project and credits
 
@@ -73,7 +89,7 @@ Fixed a potentially unresponsive Codex window after restoring it from close-to-b
 - Original Bilibili video: [GPT龙娘气泡插件 — BV1Kga666EyT](https://www.bilibili.com/video/BV1Kga666EyT/)
 - Original documentation and contributor credits: [UPSTREAM-README.md](UPSTREAM-README.md), [UPSTREAM-CHANGELOG.md](UPSTREAM-CHANGELOG.md).
 
-Thanks to T7moris and all upstream contributors for the original widget, character artwork, quota reader, quotes, gallery, audio and update framework. This fork preserves their attribution and license notices. The following list describes the custom changes, not ownership of upstream features.
+Thanks to T7moris and all upstream contributors for the original widget, character artwork, quota reader, quotes, gallery, audio and update framework. This fork preserves their attribution and license notices. The following list describes the subsequent changes, not ownership of upstream features.
 
 ### What changed in this fork
 
@@ -90,17 +106,17 @@ Thanks to T7moris and all upstream contributors for the original widget, charact
 11. **Longer waits and lifecycle cleanup:** the hook runs for up to about 24 hours, then hands back to Codex with a read-only mirror. Expired buttons cannot submit decisions. Notices are reconciled using replies, subsequent user input, cancellation and turn state. Some native browser/login prompts still require the main app.
 12. **Restart recovery and deduplication:** counters recover from the latest turn per chat, filtering subagents and old process records. An unavailable state source shows `?` instead of inventing a zero count.
 13. **Automation-start notifications:** recurring and one-time scheduled tasks display their chat's latest title when triggered.
-14. **Custom completion message:** one bubble shows `已严肃回复` and `ᗜˬᗜ` on separate lines.
+14. **Completion message:** one bubble shows `已严肃回复` and `ᗜˬᗜ` on separate lines.
 15. **Startup and layout refinements:** windowless launchers, no long hover instruction tooltip, revised quota spacing and larger purple horn-side indicators. Defaults are silent, with automatic idle quotes disabled and separate character/bubble scales.
-16. **Independent update source:** only this repository's stable Releases are accepted; upstream download URLs are rejected to protect the custom changes.
+16. **Independent update source:** automatic updates use stable Releases from this repository. Original project links remain available in the credits.
 
 ### Installation and updates
 
 Download the Windows ZIP and `SHA256SUMS.txt` from [this fork's Releases](https://github.com/holenc/codex-dragon-girl-custom/releases/latest), verify the hash, extract the entire package to a permanent ordinary folder, and run `安装GPT娘.cmd`. Requires a signed-in Codex desktop client and Node.js 24+. The installer can detect the Node bundled with Codex Primary Runtime.
 
-Machine-specific paths and plugin registration are regenerated locally. Existing preferences are retained; a fresh installation uses the custom defaults. Approval bubbles require reviewing and trusting the hook in Codex's Hooks page. The installer never grants trust or approves requests on your behalf.
+Machine-specific paths and plugin registration are regenerated locally. Existing preferences are retained; a fresh installation uses the shipped defaults. Approval bubbles require reviewing and trusting the hook in Codex's Hooks page. The installer never grants trust or approves requests on your behalf.
 
-Automatic update checks run **once on each widget startup**, with no periodic checks while it stays running. Manual checks remain available. A new version requires a higher version tag and matching Windows ZIP plus `SHA256SUMS.txt` release assets; editing source files or the README alone does not trigger an update. Downloads are checksum-verified and use the existing idle-install/recovery mechanism. Git source checkouts are protected from replacement and maintained manually.
+Automatic update checks run **at startup and every 24 hours while the pet stays running**. Manual checks remain available. A new version requires a higher version tag and matching Windows ZIP plus `SHA256SUMS.txt` release assets; editing source files or the README alone does not trigger an update. Downloads are checksum-verified and use the existing idle-install/recovery mechanism. Git source checkouts are protected from replacement and maintained manually.
 
 Windows local Codex sessions only; ordinary ChatGPT web chats are not integrated. Task-state parsing was adapted to Codex desktop 26.1111.2228.0 and may need maintenance when client internals change. Other computers and future client versions have not been fully validated.
 
