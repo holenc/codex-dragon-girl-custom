@@ -1,0 +1,20 @@
+{
+  "name": "gpt-niang-local",
+  "interface": {
+    "displayName": "GPT龙娘气泡插件（自定义修改版）"
+  },
+  "plugins": [
+    {
+      "name": "gpt-niang-usage",
+      "source": {
+        "source": "local",
+        "path": "./gpt-niang-usage"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "GPT龙娘气泡插件（自定义修改版）",
+  "version": "2.0.0",
+  "distribution": "holenc-custom",
+  "upstream": {
+    "repository": "https://github.com/T7moris/GPT-Niang",
+    "baseVersion": "1.3.6",
+    "video": "https://www.bilibili.com/video/BV1Kga666EyT/"
+  },
+  "updates": {
+    "mode": "github-releases",
+    "automatic": true,
+    "allowUpstreamInstall": false,
+    "repository": "https://github.com/holenc/codex-dragon-girl-custom",
+    "checkOnStartup": true,
+    "backgroundPolling": false
+  }
+}

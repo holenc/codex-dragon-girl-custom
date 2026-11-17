@@ -1,0 +1,16 @@
+{
+  "layoutVersion": 2,
+  "followHost": false,
+  "desktopTopmost": true,
+  "scale": 0.7,
+  "bubbleScale": 0.8,
+  "collapsed": true,
+  "soundOn": false,
+  "soundVolume": 0.9,
+  "hideMenu": true,
+  "colorMode": "original",
+  "autoQuoteEnabled": false,
+  "autoQuoteIntervalSeconds": 900,
+  "taskCompletionBubble": true,
+  "characterId": "gpt-dragon"
+}

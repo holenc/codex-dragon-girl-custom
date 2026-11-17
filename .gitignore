@@ -1,0 +1,8 @@
+**/installation.json
+**/.mcp.json
+**/*.bak
+**/*.log
+**/*.tmp
+state/
+updates/
+release/

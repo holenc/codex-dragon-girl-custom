@@ -1,0 +1,15 @@
+{
+  "name": "gpt-niang-usage",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "GPT龙娘气泡插件（自定义修改版）",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "test:windows": "powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tests/run-windows-tests.ps1"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT"
+}
