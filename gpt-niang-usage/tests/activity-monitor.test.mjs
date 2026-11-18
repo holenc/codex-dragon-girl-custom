@@ -18,6 +18,28 @@ test('authorization queue precedes questions; only blocking waits pause running 
  const s=buildActivity(threads,q,p);assert.equal(s.running,1);assert.equal(s.waiting,3);assert.deepEqual(s.permissionIds,['p1','p2']);assert.equal(s.failures.length,0);
 });
 function fixture(fn){const root=fs.mkdtempSync(path.join(os.tmpdir(),'niang-activity-'));try{return fn(root)}finally{const target=path.resolve(root);assert.ok(target.startsWith(path.resolve(os.tmpdir())+path.sep));fs.rmSync(target,{recursive:true,force:true})}}
+
+test('resumed chats missing from the history index count from lifecycle logs and clear on completion or cancellation',()=>fixture(root=>{
+ const now=Date.now(),epoch=now-60000,s=new DatabaseSync(path.join(root,'state_5.sqlite')),h=new DatabaseSync(path.join(root,'thread_history_1.sqlite'));
+ s.exec('create table threads(id text,rollout_path text,source text,name text,title text,archived int); create table thread_read_receipts(thread_id text,first_unread_turn text);');
+ h.exec('create table thread_turns(thread_id text,turn_id text,rollout_ordinal int,status text,started_at int,error_json text);');
+ fs.writeFileSync(path.join(root,'supervisor-status.json'),JSON.stringify({appServerStartedAt:new Date(epoch).toISOString()}));
+ for(const id of ['indexed','resumed','unindexed']){
+  fs.writeFileSync(path.join(root,id+'.jsonl'),JSON.stringify(event({type:'task_started',turn_id:id+'-new'},'event_msg',now-2000))+'\n');
+  s.prepare('insert into threads values(?,?,?,?,?,0)').run(id,path.join(root,id+'.jsonl'),'vscode',id,id);
+ }
+ h.prepare('insert into thread_turns values(?,?,1,?,?,null)').run('indexed','indexed-new','inProgress',Math.floor((now-2000)/1000));
+ h.prepare('insert into thread_turns values(?,?,9999,?,?,null)').run('resumed','ancient','interrupted',Math.floor((epoch-3600000)/1000));
+ const opts={codexHome:root,dataDir:root};let monitor=new ActivityMonitor(opts);
+ let snapshot=monitor.poll(now);assert.equal(snapshot.ok,true);assert.equal(snapshot.running,3);
+ fs.appendFileSync(path.join(root,'resumed.jsonl'),JSON.stringify(event({type:'task_complete',turn_id:'resumed-new'},'event_msg',now))+'\n');
+ fs.appendFileSync(path.join(root,'unindexed.jsonl'),JSON.stringify(event({type:'turn_aborted',turn_id:'unindexed-new'},'event_msg',now))+'\n');
+ snapshot=monitor.poll(now+1);assert.equal(snapshot.running,1);assert.equal(snapshot.threads.find(t=>t.threadId==='resumed').status,'completed');
+ // Late terminal records for the old turn must not end a newer turn.
+ fs.appendFileSync(path.join(root,'resumed.jsonl'),JSON.stringify(event({type:'task_started',turn_id:'resumed-next'},'event_msg',now+2))+'\n'+JSON.stringify(event({type:'task_complete',turn_id:'resumed-new'},'event_msg',now+3))+'\n');
+ snapshot=monitor.poll(now+4);assert.equal(snapshot.running,2);monitor.stop();
+ monitor=new ActivityMonitor(opts);assert.equal(monitor.poll(now+5).running,2);monitor.stop();s.close();h.close();
+}));
 test('SQLite reconciliation survives pet restart and removes historical in-progress turns, finished tasks and read failures',()=>fixture(root=>{
  const epoch=Date.now()-60000,now=Date.now(),s=new DatabaseSync(path.join(root,'state_5.sqlite')),h=new DatabaseSync(path.join(root,'thread_history_1.sqlite'));
  s.exec('create table threads(id text,rollout_path text,source text,name text,title text,archived int); create table thread_read_receipts(thread_id text,first_unread_turn text);');

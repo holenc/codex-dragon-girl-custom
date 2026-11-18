@@ -9,7 +9,7 @@ const stamp=r=>typeof r.timestamp==='number'?r.timestamp:Date.parse(r.timestamp)
 const canonical=x=>JSON.stringify(x&&typeof x==='object'?Array.isArray(x)?x.map(v=>JSON.parse(canonical(v))):Object.fromEntries(Object.keys(x).sort().map(k=>[k,JSON.parse(canonical(x[k]))])):x??null);
 const inputHash=x=>createHash('sha256').update(canonical(x)).digest('hex');
 export class ActivityLog {
-  constructor(since=0){this.since=since;this.questions=new Map();this.calls=new Map();this.results=new Map();this.turnId=null;this.offset=0;this.pending='';this.decoder=new StringDecoder('utf8');}
+  constructor(since=0){this.since=since;this.questions=new Map();this.calls=new Map();this.results=new Map();this.turnId=null;this.lifecycle=null;this.offset=0;this.pending='';this.decoder=new StringDecoder('utf8');}
   accept(r){
     const at=stamp(r),p=r.payload;if(!p||!Number.isFinite(at)||at<this.since)return;
     if(r.type==='event_msg'){
@@ -20,7 +20,12 @@ export class ActivityLog {
           this.results.set(item.id,at);if(this.results.size>512)this.results.delete(this.results.keys().next().value);
         }
       }
-      if(p.type==='task_started')this.turnId=p.turn_id;
+      if(p.type==='task_started'&&p.turn_id){
+        this.turnId=p.turn_id;
+        if(!this.lifecycle||at>this.lifecycle.startedAt)this.lifecycle={turnId:p.turn_id,status:'inProgress',startedAt:at};
+      }
+      const terminal={task_complete:'completed',task_completed:'completed',turn_completed:'completed',turn_aborted:'interrupted',turn_cancelled:'interrupted',task_failed:'failed',turn_failed:'failed'}[p.type];
+      if(terminal&&this.lifecycle&&(!p.turn_id||p.turn_id===this.lifecycle.turnId)&&at>=this.lifecycle.startedAt)this.lifecycle.status=terminal;
       if(['turn_aborted','turn_cancelled'].includes(p.type))for(const [id,q] of this.questions)if(q.turnId===(p.turn_id||this.turnId))this.questions.delete(id);
       return;
     }
@@ -55,7 +60,7 @@ export class ActivityLog {
     }
   }
   update(file){
-    const stat=fs.statSync(file),identity=String(stat.dev)+':'+String(stat.ino);if(stat.size<this.offset||this.file&&this.file!==file||this.identity&&this.identity!==identity){this.questions.clear();this.calls.clear();this.results.clear();this.offset=0;this.pending='';this.turnId=null;this.decoder=new StringDecoder('utf8');}this.file=file;this.identity=identity;
+    const stat=fs.statSync(file),identity=String(stat.dev)+':'+String(stat.ino);if(stat.size<this.offset||this.file&&this.file!==file||this.identity&&this.identity!==identity){this.questions.clear();this.calls.clear();this.results.clear();this.offset=0;this.pending='';this.turnId=null;this.lifecycle=null;this.decoder=new StringDecoder('utf8');}this.file=file;this.identity=identity;
     const fd=fs.openSync(file,'r');try{
       // A large initial history is read in bounded chunks; only control metadata survives.
       let budget=32*1024*1024;
@@ -101,13 +106,21 @@ export class ActivityMonitor {
       if(epoch!==this.epoch){this.epoch=epoch;this.logs.clear();this.recovered=false;}
       const meta=new Map(this.state.prepare('select id,rollout_path,source,name,title from threads where archived=0').all().filter(r=>!/subagent/i.test(r.source)).map(r=>[r.id,r]));
       const unread=new Map(this.state.prepare('select thread_id,first_unread_turn from thread_read_receipts').all().map(r=>[r.thread_id,Boolean(r.first_unread_turn)]));
-      const latest=this.history.prepare(`select t.thread_id,t.turn_id,t.status,t.started_at,t.error_json from thread_turns t join (select thread_id,max(rollout_ordinal) last from thread_turns group by thread_id) n on t.thread_id=n.thread_id and t.rollout_ordinal=n.last`).all();
+      const latest=new Map(this.history.prepare(`select thread_id,turn_id,status,started_at,error_json from (select t.*,row_number() over (partition by thread_id order by started_at desc,rollout_ordinal desc) rank from thread_turns t) where rank=1`).all().map(r=>[r.thread_id,r]));
       const threads=[],questions=[],permissions=[],resolvedPermissionIds=[];let recovering=false;
-      for(const row of latest){const m=meta.get(row.thread_id);if(!m)continue;
-        const startedAt=(row.started_at||0)*1000;if(startedAt<epoch-1000)continue;
-        const t={threadId:row.thread_id,turnId:row.turn_id,status:row.status,startedAt,unread:unread.get(row.thread_id)??true,quota:/usage.?limit|rate.?limit|quota|credit.?balance/i.test(row.error_json||'')};threads.push(t);
-        let log=this.logs.get(row.thread_id);if(!log){log=new ActivityLog(epoch);this.logs.set(row.thread_id,log)}
+      for(const [threadId,m] of meta){
+        const row=latest.get(threadId),startedAt=(row?.started_at||0)*1000;
+        // Imported/resumed chats can append current events without indexing
+        // their new turns in thread_history. Inspect their active rollout too.
+        if(startedAt<epoch-1000){try{if(fs.statSync(m.rollout_path).mtimeMs<epoch)continue;}catch(e){if(e.code==='ENOENT')continue;throw e;}}
+        let log=this.logs.get(threadId);if(!log){log=new ActivityLog(epoch);this.logs.set(threadId,log)}
         if(!log.update(m.rollout_path)){recovering=true;continue;}
+        let t=startedAt>=epoch-1000?{threadId,turnId:row.turn_id,status:row.status,startedAt,unread:unread.get(threadId)??true,quota:/usage.?limit|rate.?limit|quota|credit.?balance/i.test(row.error_json||'')}:null;
+        const life=log.lifecycle;
+        if(life&&(!t||life.turnId!==t.turnId&&life.startedAt>t.startedAt))t={threadId,...life,unread:unread.get(threadId)??true,quota:false};
+        else if(life&&t&&life.turnId===t.turnId&&life.status!=='inProgress'&&t.status==='inProgress')t.status=life.status;
+        if(!t)continue;
+        threads.push(t);
         // Cancelled turns have no active question cards. Async accepted questions
         // can outlive a completed turn until the explicit question reply arrives.
         for(const q of log.questions.values())if(q.turnId===t.turnId&&['interrupted','failed'].includes(t.status))log.questions.delete(q.id);
