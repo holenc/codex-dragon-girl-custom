@@ -312,8 +312,10 @@ async function run(){
   const monitor=new CompletionMonitor({onNotification:event=>process.stdout.write(JSON.stringify(event)+'\n'),stateFile});
   const {ActivityMonitor}=await import('./activity-monitor.mjs');
   const activity=stateFile?new ActivityMonitor({codexHome:defaultCodexHome(),dataDir:path.dirname(stateFile)}).start():null;
+  const {NativeApprovalBridge}=await import('./native-approvals.mjs');
+  const native=stateFile&&process.platform==='win32'?new NativeApprovalBridge({dataDir:path.dirname(stateFile)}).start():null;
   monitor.start();process.stdin.resume();
-  process.stdin.on('end',()=>{activity?.stop();monitor.stop();process.exit(0);});
-  process.on('SIGTERM',()=>{activity?.stop();monitor.stop();process.exit(0);});
+  process.stdin.on('end',()=>{native?.stop();activity?.stop();monitor.stop();process.exit(0);});
+  process.on('SIGTERM',()=>{native?.stop();activity?.stop();monitor.stop();process.exit(0);});
 }
 if(process.argv[1] && fileURLToPath(import.meta.url)===path.resolve(process.argv[1]))run();

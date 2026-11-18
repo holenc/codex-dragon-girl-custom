@@ -20,6 +20,12 @@ function Read-WidgetActivity {
   }
 }
 function Test-WidgetInteractionPending($Request) {
+  if($Request.transport-eq 'desktop-ipc'){
+    $native=Read-WidgetUpdateJson (Join-Path $script:dataDir 'native-approval-state.json')
+    return ($native -and $native.connected-eq $true -and $native.session-eq $Request.bridgeSession -and
+      [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()-[long]$native.at-ge 0 -and
+      [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()-[long]$native.at-lt 5000 -and $Request.id-in @($native.pendingIds))
+  }
   if(!(Test-WidgetActivityFresh)){return $true}
   if($script:activityState.at-lt $Request.createdAt){return $true}
   if(@($script:activityState.resolvedPermissionIds)-contains $Request.id){return $false}

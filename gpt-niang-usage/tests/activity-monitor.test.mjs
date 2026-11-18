@@ -40,6 +40,24 @@ test('resumed chats missing from the history index count from lifecycle logs and
  snapshot=monitor.poll(now+4);assert.equal(snapshot.running,2);monitor.stop();
  monitor=new ActivityMonitor(opts);assert.equal(monitor.poll(now+5).running,2);monitor.stop();s.close();h.close();
 }));
+test('native pending requests pause running counts and clear when their owner resolves or disconnects',()=>fixture(root=>{
+ const now=Date.now(),epoch=now-60000,s=new DatabaseSync(path.join(root,'state_5.sqlite')),h=new DatabaseSync(path.join(root,'thread_history_1.sqlite'));
+ s.exec('create table threads(id text,rollout_path text,source text,name text,title text,archived int); create table thread_read_receipts(thread_id text,first_unread_turn text);');
+ h.exec('create table thread_turns(thread_id text,turn_id text,rollout_ordinal int,status text,started_at int,error_json text);');
+ const log=path.join(root,'chat.jsonl');fs.writeFileSync(log,JSON.stringify(event({type:'task_started',turn_id:'turn'},'event_msg',now-2000))+'\n');
+ s.prepare('insert into threads values(?,?,?,?,?,0)').run('chat',log,'vscode','chat','chat');
+ fs.writeFileSync(path.join(root,'supervisor-status.json'),JSON.stringify({appServerStartedAt:new Date(epoch).toISOString()}));
+ const dir=path.join(root,'interactions');fs.mkdirSync(dir);
+ const r={version:1,id:'native-test',transport:'desktop-ipc',bridgeSession:'session',threadId:'chat',turnId:'turn',hookPid:process.pid,createdAt:now,expiresAt:now+60000,title:'chat',summary:'Allow download?',detail:'test'};
+ fs.writeFileSync(path.join(dir,r.id+'.mirror.json'),JSON.stringify(r));fs.writeFileSync(path.join(dir,r.id+'.request.json'),'{}');
+ const state={version:1,session:'session',connected:true,at:now,pendingIds:[r.id]},file=path.join(root,'native-approval-state.json');
+ fs.writeFileSync(file,JSON.stringify(state));const monitor=new ActivityMonitor({codexHome:root,dataDir:root});
+ let a=monitor.poll(now);assert.equal(a.ok,true);assert.equal(a.running,0);assert.equal(a.waiting,1);assert.deepEqual(a.permissionIds,[r.id]);
+ state.pendingIds=[];fs.writeFileSync(file,JSON.stringify(state));a=monitor.poll(now+1);assert.equal(a.running,1);assert.equal(a.waiting,0);assert.ok(a.resolvedPermissionIds.includes(r.id));
+ state.pendingIds=[r.id];state.connected=false;fs.writeFileSync(file,JSON.stringify(state));a=monitor.poll(now+2);assert.equal(a.waiting,0);
+ monitor.stop();s.close();h.close();
+}));
+
 test('SQLite reconciliation survives pet restart and removes historical in-progress turns, finished tasks and read failures',()=>fixture(root=>{
  const epoch=Date.now()-60000,now=Date.now(),s=new DatabaseSync(path.join(root,'state_5.sqlite')),h=new DatabaseSync(path.join(root,'thread_history_1.sqlite'));
  s.exec('create table threads(id text,rollout_path text,source text,name text,title text,archived int); create table thread_read_receipts(thread_id text,first_unread_turn text);');

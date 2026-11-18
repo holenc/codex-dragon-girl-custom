@@ -127,12 +127,19 @@ export class ActivityMonitor {
         for(const q of log.questions.values())questions.push({...q,threadId:t.threadId,kind:'notice',title:(m.name||m.title||'Codex').slice(0,100)});
       }
       const threadMap=new Map(threads.map(t=>[t.threadId,t]));
+      let native;try{native=JSON.parse(fs.readFileSync(path.join(this.dataDir,'native-approval-state.json'),'utf8'))}catch{}
+      const nativeFresh=native?.connected&&now-native.at>=0&&now-native.at<5000;
       const dir=path.join(this.dataDir,'interactions');
       for(const file of fs.existsSync(dir)?fs.readdirSync(dir).filter(n=>n.endsWith('.mirror.json')):[]){
         const target=path.join(dir,file);let r;try{r=JSON.parse(fs.readFileSync(target,'utf8'))}catch{continue}
-        const t=threadMap.get(r.threadId),log=this.logs.get(r.threadId);
+        let t=threadMap.get(r.threadId);const log=this.logs.get(r.threadId);
         if(r.version!==1||file!==r.id+'.mirror.json')continue;
-        const done=t&&(t.turnId!==r.turnId||t.status!=='inProgress'||log?.resolved(r));
+        const isNative=r.transport==='desktop-ipc';
+        if(isNative&&(!nativeFresh||native.session!==r.bridgeSession||!native.pendingIds?.includes(r.id))){
+          resolvedPermissionIds.push(r.id);continue;
+        }
+        if(isNative&&!t){t={threadId:r.threadId,turnId:r.turnId,status:'inProgress',startedAt:r.createdAt,unread:false,quota:false};threads.push(t);threadMap.set(r.threadId,t)}
+        const done=!isNative&&t&&(t.turnId!==r.turnId||t.status!=='inProgress'||log?.resolved(r));
         if(done||r.createdAt<epoch){resolvedPermissionIds.push(r.id);try{fs.unlinkSync(target)}catch{};continue;}
         if(!t){if(now-r.createdAt>10000){resolvedPermissionIds.push(r.id);try{fs.unlinkSync(target)}catch{}}continue;}
         if(fs.existsSync(path.join(dir,r.id+'.response.json')))continue;
