@@ -38,7 +38,11 @@ public static class GptWidgetZOrderNative {
 '@
 }
 $script:gptZOrderBands=@{}
-function Set-WidgetDesktopLayer([IntPtr]$Widget,[bool]$Topmost=$true){
+function Set-WidgetDesktopLayer([IntPtr]$Widget,[bool]$Topmost=$true,$Window=$null){
+  # WPF can reapply its dependency property during Show/menu/layout changes.
+  # Keep that property consistent with the native band, rather than changing
+  # only the HWND while the owning Window still records Topmost=false.
+  if($Window -and ([Windows.Interop.WindowInteropHelper]::new($Window)).Handle-eq $Widget -and $Window.Topmost-ne $Topmost){$Window.Topmost=$Topmost}
   # A desktop pet must not be owned (and destroyed or minimized) by the chat window.
   if([GptWidgetZOrderNative]::GetWindowLongPtr($Widget,-8)-ne [IntPtr]::Zero){
     [GptWidgetZOrderNative]::SetWindowLongPtr($Widget,-8,[IntPtr]::Zero)|Out-Null

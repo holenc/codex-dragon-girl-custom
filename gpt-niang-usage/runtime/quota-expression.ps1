@@ -1,15 +1,18 @@
 function Get-WidgetQuotaExpression($Status,[long]$Now=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()) {
   # Unknown, failed or old snapshots must not be interpreted as an empty wallet.
-  if(!$Status -or $Status.ok-ne $true -or $Status.queryOk-ne $true -or !$Status.observedAt -or $Now-[double]$Status.observedAt-gt 180000){return 'normal'}
+  if(!$Status -or $Status.ok-ne $true -or $Status.accountVerified-eq $false -or !$Status.observedAt -or $Now-[double]$Status.observedAt-gt 180000){return 'normal'}
+  # The refresh queue retains a recently verified same-account snapshot after
+  # a transient query failure. Keep using that snapshot until its normal expiry.
+  if($Status.queryOk-ne $true -and !($Status.accountKey-match '^[a-f0-9]{64}$' -and $Status.clearPrevious-eq $false)){return 'normal'}
   $short=@($Status.windows|Where-Object {$_.minutes-eq 300})|Select-Object -First 1
-  if(!$short -or $null-eq $short.used -or [double]$short.used-lt 100){return 'normal'}
-  if($short.resetsAt -and [double]$short.resetsAt*1000-le $Now){return 'normal'}
-  if($Status.credits.unlimited-eq $true){return 'money'}
-  $balance=$Status.credits.balance
-  if($null-eq $balance){return 'normal'}
-  if([double]$balance-gt 0){return 'money'}
-  if([double]$balance-lt 0){return 'normal'}
   $week=@($Status.windows|Where-Object {$_.minutes-eq 10080})|Select-Object -First 1
+  $shortSpent=$short -and $null-ne $short.used -and [double]$short.used-ge 100 -and (!$short.resetsAt -or [double]$short.resetsAt*1000-gt $Now)
+  $weekSpent=$week -and (($null-ne $week.remaining -and [double]$week.remaining-le 0) -or ($null-ne $week.used -and [double]$week.used-ge 100)) -and (!$week.resetsAt -or [double]$week.resetsAt*1000-gt $Now)
+  $balance=$Status.credits.balance
+  if(($shortSpent -or $weekSpent) -and ($Status.credits.unlimited-eq $true -or ($null-ne $balance -and [double]$balance-gt 0))){return 'money'}
+  if(!$shortSpent){return 'normal'}
+  if($null-eq $balance){return 'normal'}
+  if([double]$balance-lt 0){return 'normal'}
   if($week -and $null-ne $week.remaining -and [double]$week.remaining-lt 5 -and (!$week.resetsAt -or [double]$week.resetsAt*1000-gt $Now)){return 'closed'}
   return 'drooling'
 }

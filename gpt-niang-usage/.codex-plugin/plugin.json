@@ -1,6 +1,6 @@
 {
   "name": "gpt-niang-usage",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "Windows 桌面额度、任务状态与授权气泡插件。",
   "mcpServers": "./.mcp.json",
   "interface": {

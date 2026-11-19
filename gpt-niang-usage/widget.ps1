@@ -4,6 +4,8 @@ $script:appDir=$AppDir
 $script:configPath=Join-Path $script:appDir 'installation.json'
 if(!(Test-Path -LiteralPath $script:configPath)){throw 'Please run Install.ps1 first.'}
 $script:config=Get-Content -LiteralPath $script:configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+. (Join-Path $script:appDir 'runtime\runtime-paths.ps1')
+try{Repair-WidgetRuntimePaths $script:config $script:configPath -CheckCurrent}catch{}
 $script:dataDir=$script:config.dataDir
 $null=New-Item -ItemType Directory -Path $script:dataDir -Force
 . (Join-Path $script:appDir 'runtime\quotes.ps1')
@@ -270,8 +272,8 @@ function Set-WidgetFollowHost([bool]$Follow) {
     $script:desktopLeft=$frame.Left;$script:desktopTop=$frame.Top
   }
   $script:followHost=$Follow;$script:lastPosition=$null;$script:attachedHost=[IntPtr]::Zero
-  if(!$Follow){$script:hostFollower.Detach();Set-WidgetDesktopLayer $script:widgetHandle $script:desktopTopmost}
-  else{Set-WidgetDesktopLayer $script:widgetHandle $false}
+  if(!$Follow){$script:hostFollower.Detach();Set-WidgetDesktopLayer $script:widgetHandle $script:desktopTopmost -Window $script:window}
+  else{Set-WidgetDesktopLayer $script:widgetHandle $false -Window $script:window}
   Set-Appearance;Save-Settings;Tick-Widget
 }
 function Set-Facing {
@@ -1045,6 +1047,7 @@ function Ensure-QuotaWorker([long]$now){
   $script:lastWorkerStart=$now
   $workerArgs=@(('"'+(Join-Path $script:appDir 'runtime\watch.mjs')+'"'),('"'+$script:configPath+'"'),[string]$PID)
   try{
+    Repair-WidgetRuntimePaths $script:config $script:configPath
     $workerStart=[Diagnostics.ProcessStartInfo]::new()
     $workerStart.FileName=$script:config.nodePath;$workerStart.Arguments=$workerArgs -join ' '
     $workerStart.WorkingDirectory=$script:appDir
@@ -1074,7 +1077,7 @@ function Stop-WidgetRuntime {
   try{if($script:mutexOwned){$script:mutex.ReleaseMutex();$script:mutexOwned=$false}}catch{};try{$script:mutex.Dispose()}catch{}
 }
 function Write-WidgetPresence([bool]$visible,[long]$now){
-Write-WidgetJson (Join-Path $script:dataDir 'presence.json') @{visible=[bool]$visible;at=$now;host=$script:hostHandle.ToInt64();widget=$script:widgetHandle.ToInt64();pid=$PID;activation=@{route=[GptWidgetNative]::LastRestoreRoute;error=[GptWidgetNative]::LastRestoreError;at=[GptWidgetNative]::LastRestoreAt};activity=(Get-WidgetActivityStatus);character=@{expression=$script:quotaExpressionKey;expressionError=$script:quotaExpressionError;id=$script:characterId;name=$script:activeCharacter.name;galleryOpen=[bool]($script:characterGallery -and $script:characterGallery.IsVisible)};sound=(Get-WidgetAudioStatus);followHost=$script:followHost;follow=@{ready=$script:hostFollower.Ready;events=$script:hostFollower.MovementEvents;mode='native-immediate';animationPaddingDip=14};sizing=@{character=$script:scale;bubble=$script:bubbleScale;display=$script:displayScale;preview=[bool]$script:settingsSizePreview};autoQuotes=@{enabled=$script:autoQuoteEnabled;intervalSeconds=$script:autoQuoteIntervalSeconds;nextAt=$script:autoQuoteNextAt;displayCount=$script:autoQuoteDisplayCount};completion=(Get-CompletionNotificationStatus);recovery=@{checks=$script:occlusionRecovery.Checks;toggles=$script:occlusionRecovery.Toggles;pending=$script:occlusionRecovery.Pending;cloaked=$script:occlusionRecovery.OwnedCloak;failed=$script:occlusionRecovery.Failed;hresult=$script:occlusionRecovery.LastHresult};music=(Get-WidgetMusicStatus);interaction=(Get-WidgetInteractionStatus);scene=@{open=!$script:collapsed;mode=$script:bubbleMode;resetTimeMode=$script:resetTimeMode;startedAt=$script:sceneStartedAt;closesAt=$script:sceneDeadline;shortReset=$script:ui.ShortReset.Text;weekReset=$script:ui.WeekReset.Text}}
+Write-WidgetJson (Join-Path $script:dataDir 'presence.json') @{visible=[bool]$visible;at=$now;host=$script:hostHandle.ToInt64();widget=$script:widgetHandle.ToInt64();pid=$PID;layer=@{requestedTopmost=$script:desktopTopmost;wpfTopmost=$script:window.Topmost;nativeTopmost=[GptWidgetZOrderNative]::Topmost($script:widgetHandle)};activation=@{route=[GptWidgetNative]::LastRestoreRoute;error=[GptWidgetNative]::LastRestoreError;at=[GptWidgetNative]::LastRestoreAt};activity=(Get-WidgetActivityStatus);character=@{expression=$script:quotaExpressionKey;expressionError=$script:quotaExpressionError;id=$script:characterId;name=$script:activeCharacter.name;galleryOpen=[bool]($script:characterGallery -and $script:characterGallery.IsVisible)};sound=(Get-WidgetAudioStatus);followHost=$script:followHost;follow=@{ready=$script:hostFollower.Ready;events=$script:hostFollower.MovementEvents;mode='native-immediate';animationPaddingDip=14};sizing=@{character=$script:scale;bubble=$script:bubbleScale;display=$script:displayScale;preview=[bool]$script:settingsSizePreview};autoQuotes=@{enabled=$script:autoQuoteEnabled;intervalSeconds=$script:autoQuoteIntervalSeconds;nextAt=$script:autoQuoteNextAt;displayCount=$script:autoQuoteDisplayCount};completion=(Get-CompletionNotificationStatus);recovery=@{checks=$script:occlusionRecovery.Checks;toggles=$script:occlusionRecovery.Toggles;pending=$script:occlusionRecovery.Pending;cloaked=$script:occlusionRecovery.OwnedCloak;failed=$script:occlusionRecovery.Failed;hresult=$script:occlusionRecovery.LastHresult};music=(Get-WidgetMusicStatus);interaction=(Get-WidgetInteractionStatus);scene=@{open=!$script:collapsed;mode=$script:bubbleMode;resetTimeMode=$script:resetTimeMode;startedAt=$script:sceneStartedAt;closesAt=$script:sceneDeadline;shortReset=$script:ui.ShortReset.Text;weekReset=$script:ui.WeekReset.Text}}
 }
 function Tick-Widget {
   if($script:updating){return}
@@ -1163,7 +1166,7 @@ function Tick-Widget {
       $musicLight=if(Test-WidgetMusicActive){$script:widgetMusic.LampHandle}else{[IntPtr]::Zero}
       if(!$script:occlusionRecovery.OwnedCloak){$layer=Set-WidgetAboveHost $script:widgetHandle $script:hostHandle $musicLight}
     }
-    else{Set-WidgetDesktopLayer $script:widgetHandle $script:desktopTopmost}
+    else{Set-WidgetDesktopLayer $script:widgetHandle $script:desktopTopmost -Window $script:window}
     if($showWidget){
       Reset-WidgetAutoQuoteSchedule $now
       $script:window.Show()

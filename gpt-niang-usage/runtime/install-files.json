@@ -68,5 +68,7 @@
   "runtime/quota-expression.ps1",
   "assets/gpt-dragon-drooling.png",
   "assets/gpt-dragon-money.png",
-  "assets/gpt-dragon-closed.png"
+  "assets/gpt-dragon-closed.png",
+  "runtime/runtime-paths.ps1",
+  "runtime/mcp-launch.ps1"
 ]

@@ -23,7 +23,7 @@ try {
     if($defaults){Write-WidgetSupervisorJson $settingsFile $defaults}
   }
   if(!(Test-Path -LiteralPath (Join-Path $config.dataDir 'update-preferences.json'))){Write-WidgetSupervisorJson (Join-Path $config.dataDir 'update-preferences.json') @{automatic=$true}}
-  Write-WidgetSupervisorJson (Join-Path $appDir '.mcp.json') @{mcpServers=@{'gpt-niang-usage'=@{command=$config.nodePath;args=@((Join-Path $appDir 'runtime\mcp.mjs'))}}}
+  Write-WidgetSupervisorJson (Join-Path $appDir '.mcp.json') @{mcpServers=@{'gpt-niang-usage'=@{command=(Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe');args=@('-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',(Join-Path $appDir 'runtime\mcp-launch.ps1'))}}}
   & $config.codexPath plugin marketplace add $config.marketplaceRoot --json
   if($LASTEXITCODE-ne 0){throw 'Codex rejected the local marketplace.'}
   & $config.codexPath plugin add 'gpt-niang-usage@gpt-niang-local' --json

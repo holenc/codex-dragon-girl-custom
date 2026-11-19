@@ -22,6 +22,7 @@ function Start-WidgetUpdate([string]$Mode='manual') {
     [Windows.MessageBox]::Show($script:window,'请先保存并关闭编辑窗口，再检查更新。','GPT 娘更新')|Out-Null;return
   }
   if(!$script:config.nodePath){return}
+  if(Get-Command Repair-WidgetRuntimePaths -ErrorAction SilentlyContinue){try{Repair-WidgetRuntimePaths $script:config $script:configPath}catch{return}}
   if($Mode-ne 'cleanup'){
     $script:updateStartupChecked=$true
     $script:updateNextDailyAt=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()+86400000L

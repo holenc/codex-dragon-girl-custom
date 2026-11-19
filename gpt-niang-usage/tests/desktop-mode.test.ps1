@@ -47,6 +47,12 @@ try{
   if(![GptWidgetZOrderNative]::IsWindow($petHandle)){throw 'Pet destroyed with closed chat'}
   Set-WidgetDesktopLayer $petHandle $false
   if([GptWidgetZOrderNative]::Topmost($petHandle)){throw 'Topmost toggle failed'}
+  Set-WidgetDesktopLayer $petHandle $true -Window $pet
+  if(!$pet.Topmost){throw 'WPF Topmost property is inconsistent with desktop preference'}
+  $pet.Hide();$pet.Show();$pet.UpdateLayout()
+  if(!$pet.Topmost -or ![GptWidgetZOrderNative]::Topmost($petHandle)){throw 'Desktop topmost was lost after a WPF show/layout cycle'}
+  Set-WidgetDesktopLayer $petHandle $false -Window $pet
+  if($pet.Topmost -or [GptWidgetZOrderNative]::Topmost($petHandle)){throw 'Disabling topmost did not reset both WPF and native state'}
   # Use the real appearance and mode-switch functions with deterministic geometry.
   $script:window=$pet;$script:widgetHandle=$petHandle;$script:hostHandle=[IntPtr]::Zero;$script:hostFollower=$follower
   $script:ui=@{Root=(New-Object Windows.Controls.Grid)};$script:scale=2.5;$script:followHost=$false;$script:desktopTopmost=$true

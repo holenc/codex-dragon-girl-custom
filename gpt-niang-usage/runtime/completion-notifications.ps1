@@ -144,6 +144,7 @@ function Start-CompletionMonitor {
   if($now-lt $script:completionRetryAfter){return}
   $process=$null
   try{
+    if(Get-Command Repair-WidgetRuntimePaths -ErrorAction SilentlyContinue){Repair-WidgetRuntimePaths $script:config $script:configPath}
     $start=New-Object Diagnostics.ProcessStartInfo
     $start.FileName=[string]$script:config.nodePath
     # The state file lets a restarted monitor recover completions that landed

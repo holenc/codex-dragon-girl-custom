@@ -1,6 +1,6 @@
 # GPT龙娘气泡插件
 
-**v2.0.4 · Windows 桌面额度、任务状态与授权气泡。仅供非商业使用。**
+**v2.0.5 · Windows 桌面额度、任务状态与授权气泡。仅供非商业使用。**
 
 ## 原作出处与致谢
 
@@ -10,6 +10,10 @@
 - 原作者及贡献者的完整说明：[原项目 README](UPSTREAM-README.md)、[原项目更新记录](UPSTREAM-CHANGELOG.md)。
 
 感谢 T7moris 及原项目贡献者提供的挂件、角色基础素材、额度读取、语录、图库、音效和更新框架。本分支保留原作署名与许可；下方列出本项目的后续改动，不将原有功能列为原创。其他仓库曾作为方案比较参考，不代表本分支合并了其中的代码。
+
+## 2.0.5 更新
+
+修复客户端/运行时升级后程序路径失效引起的问号及监听器停止。自动重新定位 Node 与 Codex，额度插件通过稳定入口启动；始终置顶同时同步 WPF 属性和窗口层级。自动选择当前运行的 Codex 或最新可用安装。五小时或周额度耗尽且有充值余额时切换美元眼；外观和已有设置保留。
 
 ## 2.0.4 更新
 
@@ -28,13 +32,13 @@
 - 自动更新使用本仓库：启动时检查一次，持续运行期间每 24 小时再检查一次；保留手动检查与限流退避。
 - 版本菜单和更新提示简化名称，隐藏内部构建标识。
 
-**从 2.0.0 / 2.0.1 升级：**本版下载包采用兼容旧更新器的目录布局，可在龙娘菜单中检查更新。更新后确认显示 **2.0.4**。若此前失败留下异常状态，可退出龙娘，将本版完整覆盖到原安装目录后运行 `安装GPT娘.cmd`；保留 `installation.json` 与个人数据，不要先卸载或删除配置。
+**从 2.0.0 / 2.0.1 升级：**本版下载包采用兼容旧更新器的目录布局，可在龙娘菜单中检查更新。更新后确认显示 **2.0.5**。若此前失败留下异常状态，可退出龙娘，将本版完整覆盖到原安装目录后运行 `安装GPT娘.cmd`；保留 `installation.json` 与个人数据，不要先卸载或删除配置。
 
 ## 下载与安装
 
 本项目仓库：[holenc/codex-dragon-girl-custom](https://github.com/holenc/codex-dragon-girl-custom)
 
-1. 从[本项目 Releases](https://github.com/holenc/codex-dragon-girl-custom/releases/latest)下载 `gpt-niang-usage-widget-v2.0.4-windows.zip` 与 `SHA256SUMS.txt`，核对校验值。
+1. 从[本项目 Releases](https://github.com/holenc/codex-dragon-girl-custom/releases/latest)下载 `gpt-niang-usage-widget-v2.0.5-windows.zip` 与 `SHA256SUMS.txt`，核对校验值。
 2. 完整解压到长期保留的普通目录，双击 `安装GPT娘.cmd`。请先安装并登录 Codex 桌面客户端。需要 Node.js 24+；安装器优先使用已有 Node，或检测 Codex Primary Runtime 自带的 Node。
 3. 安装器在这台电脑重新生成程序路径、插件注册和启动配置；已有个人设置会保留，新安装使用默认设置。安装包不包含作者的账户、聊天、授权记录或桌面坐标。
 4. 如使用授权气泡，请在 Codex 的 Hooks 页面检查并信任 GPT Niang 的 PermissionRequest Hook。不会替用户修改信任记录，也不会自动同意任何操作。
@@ -47,7 +51,7 @@
 2. **双击唤出 Codex。** 单击仍看额度，双击恢复最小化或关闭到后台的 Codex 主窗口。
 3. **增加充值余额第三行。** 左侧显示官方接口返回的剩余 credits，右侧显示美元估算。默认按 `500 credits = 20 美元` 换算；这是参考值，不是账单或退款金额。
 4. **额度颜色更易识别。** 正常进度条和百分比为绿色，剩余不超过 25% 时为红色；保留原警戒阈值。
-5. **额度表情切换。** 普通情况保留原图；五小时耗尽且无充值余额时流口水；同时周剩余低于 5% 时闭眼；五小时耗尽但仍有充值余额时使用保留高光的简化美元眼。
+5. **额度表情切换。** 普通情况保留原图；五小时耗尽且无充值余额时流口水；同时周剩余低于 5% 时闭眼；五小时或周额度耗尽但仍有充值余额时使用保留高光的简化美元眼。
 6. **失败表情优先。** 明确的整轮任务失败优先显示流口水，处理后恢复额度对应表情。正常取消、单次工具失败后继续重试不触发此状态。
 7. **运行数量标记。** 龙角凹口旁显示紫色 `......`；多对话同时工作显示 `3......` 等，数字最大显示 99。按对话计数，不按工具调用计数。
 8. **等待数量标记。** 上一行显示紫色 `+1`、`+2`。等待与正常运行分开显示；异步提问时对话可能仍在继续工作。
@@ -77,7 +81,11 @@
 
 ## English
 
-**GPT Dragon Girl Bubble Plugin, v2.0.4.** Windows quota, task-state and approval bubbles. Non-commercial use only.
+**GPT Dragon Girl Bubble Plugin, v2.0.5.** Windows quota, task-state and approval bubbles. Non-commercial use only.
+
+### Version 2.0.5
+
+Recover executable paths after client/runtime upgrades to restore quota and activity monitoring. Use a stable MCP launcher, and synchronize WPF Topmost with native window layering. Prefer the running Codex installation or the newest available install. Dollar eyes cover exhaustion of either the five-hour or weekly allowance with purchased credits remaining. Existing preferences are preserved.
 
 ### Version 2.0.4
 
@@ -96,7 +104,7 @@ Fix missing running-chat indicators for resumed/imported chats by reconciling li
 - Check this repository for updates at startup and every 24 hours while running. Manual checks and rate-limit backoff remain available.
 - Simplify version labels and hide internal build identifiers.
 
-**Upgrading from 2.0.0 / 2.0.1:** this download uses a layout compatible with the old updater. Check for updates in the pet menu and confirm **2.0.4** afterwards. If an earlier failure left an abnormal update state, exit the pet, extract the complete release over the original installation, and run `安装GPT娘.cmd`. Keep `installation.json` and personal data; do not uninstall or delete settings first.
+**Upgrading from 2.0.0 / 2.0.1:** this download uses a layout compatible with the old updater. Check for updates in the pet menu and confirm **2.0.5** afterwards. If an earlier failure left an abnormal update state, exit the pet, extract the complete release over the original installation, and run `安装GPT娘.cmd`. Keep `installation.json` and personal data; do not uninstall or delete settings first.
 
 ### Original project and credits
 
@@ -113,7 +121,7 @@ Thanks to T7moris and all upstream contributors for the original widget, charact
 2. **Double-click to restore Codex:** single-click still opens quota information; double-click brings the minimized or background Codex window forward.
 3. **Purchased credits and USD estimate:** a third quota row shows the official remaining credit balance and an estimate using `500 credits = USD 20`. This is a display estimate, not a billing or refund balance.
 4. **Clear quota colors:** progress bars and percentages are green normally and red at 25% remaining or less, preserving the existing warning threshold.
-5. **Quota-based expressions:** normal artwork stays unchanged. An exhausted five-hour allowance with no purchased credits shows the drooling expression; with weekly allowance below 5%, it shows the previously approved closed-eye expression. Remaining purchased credits select the simplified dollar-eye artwork with the original highlights retained.
+5. **Quota-based expressions:** normal artwork stays unchanged. An exhausted five-hour allowance with no purchased credits shows the drooling expression; with weekly allowance below 5%, it shows the previously approved closed-eye expression. When either the five-hour or weekly allowance is exhausted, remaining purchased credits select the simplified dollar-eye artwork with the original highlights retained.
 6. **Failure expression override:** a confirmed failed turn takes priority and shows the drooling expression. The normal quota expression returns after resolution. Normal cancellation and individual tool errors followed by retries do not trigger this override.
 7. **Running-chat counter:** purple `......` beside the horn changes to `3......` for concurrent chats, capped at 99. It counts chats, not individual tool calls.
 8. **Waiting counter:** a purple `+1`, `+2`, etc. appears on the line above. Waiting and running are tracked separately; asynchronous questions can coexist with active work.
