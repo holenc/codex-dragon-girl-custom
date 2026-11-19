@@ -283,7 +283,7 @@ async function performUpdate(config,{mode='manual',agentDir=config.updateAgent??
 })}={}) {
   const automatic=mode.startsWith('automatic');
   const stateFile=path.join(config.dataDir,'update-status.json');
-  const state=read(stateFile)??{};const report=value=>atomicJson(stateFile,Object.assign(state,value));
+  const state=read(stateFile)??{};const report=value=>atomicJson(stateFile,Object.assign(state,value,{at:Date.now()}));
   const custom=read(path.join(config.appDir,'custom-build.json'));
   if(custom?.updates?.mode==='manual-only' && mode!=='cleanup'){
     report({phase:'manual-only',message:'自动更新已关闭，请手动更新。',nextCheckAt:0});return;
@@ -293,7 +293,7 @@ async function performUpdate(config,{mode='manual',agentDir=config.updateAgent??
   if(automatic && (!updatePreferences(config.dataDir).automatic || (mode==='automatic' && Date.now()<(state.nextCheckAt??0))))return;
   let lock,jobDir;
   try{lock=acquireUpdateLock(agentDir);}catch(error){report({phase:'failed',message:error.message,nextCheckAt:Date.now()+DAY});return;}
-  if(!lock)return;
+  if(!lock){report({phase:'busy',message:'已有更新或安装正在进行，请稍候再检查。'});return;}
   try {
     const oldJournal=readTransaction(path.join(agentDir,'update-transaction.json'));
     if(oldJournal && !['committed','rolled-back'].includes(oldJournal.phase))throw new Error('Unfinished update requires recovery from the stable launcher');

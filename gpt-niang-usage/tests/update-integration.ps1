@@ -1,4 +1,4 @@
-param([switch]$KeepFixture)
+﻿param([switch]$KeepFixture)
 # Optional real Codex CLI / Task Scheduler test. It uses a private Codex home,
 # a dedicated task name, temporary shortcut and launcher, and never opens a GUI.
 $ErrorActionPreference='Stop'
@@ -14,6 +14,12 @@ $lock=$null
 function Copy-TestPackage([string]$Root,[string]$Version) {
   $null=New-Item -ItemType Directory -Path $Root -Force
   $target=Join-Path $Root 'gpt-niang-usage';Copy-Item -LiteralPath $source -Destination $target -Recurse
+  # Installed source includes machine state; a release candidate must not.
+  foreach($name in @('installation.json','.mcp.json')){
+    $privateFile=Join-Path $target $name
+    if(Test-Path -LiteralPath $privateFile){Remove-Item -LiteralPath $privateFile -Force}
+  }
+  [IO.File]::WriteAllText((Join-Path $target '.mcp.json'),'{"mcpServers":{}}',[Text.UTF8Encoding]::new($false))
   # Other tests can create private fixtures beneath tests/ while this runs.
   # Candidate bundles contain runtime assets, never those concurrent fixtures.
   $copiedTests=[IO.Path]::GetFullPath((Join-Path $target 'tests'))
@@ -84,9 +90,11 @@ try {
   . (Join-Path $app 'runtime\update-common.ps1')
   Write-WidgetSupervisorJson (Join-Path $app 'installation.json') @{appDir=$app;dataDir=$data;version='1.3.2'}
   Write-WidgetSupervisorJson (Join-Path $data 'update-preferences.json') @{automatic=$false}
+  Write-WidgetSupervisorJson (Join-Path $data 'settings.json') @{followHost=$true;desktopTopmost=$false}
   Wait-IsolatedProcess (Start-IsolatedPowerShell (Join-Path $app 'Install.ps1'))
   $registered=Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
-  if($registered.Actions[0].WorkingDirectory-ine (Join-Path $env:WINDIR 'System32')-or $registered.Actions[0].Arguments-cne (Get-WidgetAgentPowerShellArguments $agent)){throw 'Real task did not use the isolated stable entry.'}
+  $expectedInfo=Get-WidgetSupervisorInfo $app
+  if($registered.Actions[0].WorkingDirectory-ine $expectedInfo.WorkingDirectory-or $registered.Actions[0].Arguments-cne $expectedInfo.Arguments-or $registered.Actions[0].Execute-ine $expectedInfo.Execute){throw 'Real task did not use the isolated stable entry.'}
   Write-Output 'PASS real initial plugin and stable scheduled task registration'
   $lock=Enter-WidgetUpdateLock
   $job=Join-Path $data ('updates\'+$lock.Token);$candidate=Join-Path $job 'package\bundle'
@@ -158,7 +166,7 @@ try {
   foreach($process in $processes){if(!$process.HasExited){$process.Kill();$process.WaitForExit()};$process.Dispose()}
   $task=Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
   if($task){
-    if($task.Actions[0].Arguments-cne (Get-WidgetAgentPowerShellArguments $agent)-or $task.Actions[0].Execute-ine $powerShell){throw 'Refusing cleanup of a foreign integration task.'}
+    if($task.Actions[0].Arguments-cne $expectedInfo.Arguments-or $task.Actions[0].Execute-ine $expectedInfo.Execute){throw 'Refusing cleanup of a foreign integration task.'}
     Stop-ScheduledTask -TaskName $taskName
     Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
   }

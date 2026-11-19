@@ -21,6 +21,6 @@
     "macos-recovery-deadline-precision",
     "workspace-timeout-direct-quota-fallback"
   ],
-  "id": "holenc-custom-2.0.5",
-  "customVersion": "2.0.5"
+  "id": "holenc-custom-2.0.6",
+  "customVersion": "2.0.6"
 }

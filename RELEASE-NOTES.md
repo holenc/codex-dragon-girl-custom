@@ -1,25 +1,25 @@
 # GPT龙娘气泡插件
 
-## 2.0.5 — 2026-11-19
+## 2.0.6 — 2026-11-19
 
-- 修复 Codex 或其 Primary Runtime 更新后，旧版本目录失效导致额度、完成提醒和任务/审批监听无法启动，任务角标显示问号的问题。
-- 启动挂件、监听器、更新器及 Hook 前核对可执行文件；必要时自动查找当前有效的 Node 24+ 和 Codex 路径，并只更新安装配置中的程序路径。
-- 额度 MCP 插件使用稳定的 PowerShell 启动入口，再启动当前有效 Node；二进制转发标准输入/输出，保持 JSON-RPC 握手和工具列表正常。
-- 修复“始终置顶”设置与 WPF 窗口属性不一致：同步 WPF Topmost 与原生窗口层级，重新显示或布局变化后保持一致；关闭置顶和切回窗口跟随模式时同步撤销。
-- 自动识别当前运行的 Codex；没有运行实例时，选择最新可用安装版本，避免多个安装目录之间连错。
-- 修复周额度耗尽、五小时仍有剩余时使用充值额度却不显示美元眼的问题；五小时或周额度任一耗尽且有充值余额时显示美元眼。最近有效的同账户快照可在短暂查询失败期间继续使用，超时或身份未验证时不猜测。
-- 保留角色、气泡大小、坐标、语录、额度颜色和已有审批设置，不改变账号、额度或客户端权限。
-- 新增运行时目录替换、配置保留、连续升级、窗口隐藏/重新显示及 MCP 启动握手验证。
+- 加固检查更新的启动链路：每次启动更新器前重新核对当前运行时，主动修复旧版 Node/Codex 路径，不因短期缓存跳过检查。
+- 增加“正在启动更新器”“正在整理更新文件”和“已有更新正在进行”等状态，避免点击后看不出是否开始。
+- 保留更新器返回的具体失败或回滚原因；异常退出时补充退出码及错误信息，不再统一覆盖成笼统提示。找不到可用运行时时明确报错，不静默返回。
+- 修正更新测试隔离，使用独立配置、专用任务和无窗口模式；候选包不携带本机安装状态。
+- 已通过真实更新器启动验证：模拟 Node 旧目录不存在，自动恢复后读取公开版本并返回最终状态，原设置保持不变。
+- 已通过独立环境中的真实安装验证：升级注册新版本、监督进程健康检查、安装失败回滚、更新中断恢复及测试任务清理。
+
+仍保留启动时和每 24 小时检查、安装包校验、空闲安装和失败恢复。旧版本若更新器本身已因运行时路径失效而无法启动，需要先手动完整升级到 2.0.5 或更新版本一次；之后使用新的检查更新链路。网络故障和 GitHub 限流仍可能使检查失败，届时会显示状态和原因，不应把失败当作已更新。
 
 ## English
 
-### 2.0.5 — 2026-11-19
+### 2.0.6 — 2026-11-19
 
-- Recover from versioned executable directories removed after Codex or Primary Runtime updates, which could prevent quota/activity/approval monitors from starting and show an unknown-state badge.
-- Check executables before launching the widget, monitors, updater and hook. Rediscover an available Node 24+ and Codex path when necessary, updating only machine-specific executable paths.
-- Launch the quota MCP service through a stable PowerShell entry point that selects the available Node runtime. Relay stdin/stdout as bytes to preserve JSON-RPC initialization and tool listing.
-- Keep the Always on Top preference consistent with both WPF Topmost and the native window band across show/layout cycles. Disable both when the preference is cleared or window-follow mode is restored.
-- Prefer the currently running Codex installation; otherwise select the newest available installed version.
-- Show dollar eyes when either the five-hour or weekly allowance is exhausted and purchased credits remain. Retain only a recent verified same-account snapshot across transient query failures; do not infer from expired or unverified data.
-- Preserve appearance, position, quotes, quota colors and approval preferences without changing accounts, quota or client permissions.
-- Add runtime replacement, configuration preservation, successive-upgrade, hide/show and MCP transport validation.
+- Harden updater startup by rechecking the current runtime before each launch and repairing obsolete Node/Codex paths without a short-lived cache suppressing recovery.
+- Show explicit starting, cleanup and update-in-progress states so a click is no longer visually ambiguous.
+- Preserve specific update/rollback errors. Include the exit code and error output after an abnormal exit, and report a missing runtime rather than returning silently.
+- Correct test isolation with separate configuration, a dedicated task and headless operation. Exclude local installation state from candidate archives.
+- Verify the actual updater can recover from a missing Node directory, read the public release and finish with a terminal status while preserving preferences.
+- Verify real isolated installation, version registration, supervisor health, rollback after installer failure, interrupted-update recovery and test-task cleanup.
+
+Startup/daily checks, package verification, idle installation and recovery remain enabled. An older installation whose updater cannot start because its runtime path has disappeared requires one complete manual upgrade to 2.0.5 or later first. Subsequent checks use the hardened startup path. Network failures and GitHub rate limits remain possible and must report a reason rather than masquerading as a successful update.

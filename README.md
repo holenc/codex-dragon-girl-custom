@@ -1,6 +1,6 @@
 # GPT龙娘气泡插件
 
-**v2.0.5 · Windows 桌面额度、任务状态与授权气泡。仅供非商业使用。**
+**v2.0.6 · Windows 桌面额度、任务状态与授权气泡。仅供非商业使用。**
 
 ## 原作出处与致谢
 
@@ -10,6 +10,10 @@
 - 原作者及贡献者的完整说明：[原项目 README](UPSTREAM-README.md)、[原项目更新记录](UPSTREAM-CHANGELOG.md)。
 
 感谢 T7moris 及原项目贡献者提供的挂件、角色基础素材、额度读取、语录、图库、音效和更新框架。本分支保留原作署名与许可；下方列出本项目的后续改动，不将原有功能列为原创。其他仓库曾作为方案比较参考，不代表本分支合并了其中的代码。
+
+## 2.0.6 更新
+
+加固更新器启动、路径恢复及错误反馈。已在独立无窗口环境验证实际升级、失败回滚和中断恢复；启动器旧路径失效时会重新识别可用运行时。已坏到无法启动更新器的旧安装需先手动完整升级到 2.0.5 或以上一次，之后使用新的更新链路。
 
 ## 2.0.5 更新
 
@@ -32,13 +36,13 @@
 - 自动更新使用本仓库：启动时检查一次，持续运行期间每 24 小时再检查一次；保留手动检查与限流退避。
 - 版本菜单和更新提示简化名称，隐藏内部构建标识。
 
-**从 2.0.0 / 2.0.1 升级：**本版下载包采用兼容旧更新器的目录布局，可在龙娘菜单中检查更新。更新后确认显示 **2.0.5**。若此前失败留下异常状态，可退出龙娘，将本版完整覆盖到原安装目录后运行 `安装GPT娘.cmd`；保留 `installation.json` 与个人数据，不要先卸载或删除配置。
+**从 2.0.0 / 2.0.1 升级：**本版下载包采用兼容旧更新器的目录布局，可在龙娘菜单中检查更新。更新后确认显示 **2.0.6**。若此前失败留下异常状态，可退出龙娘，将本版完整覆盖到原安装目录后运行 `安装GPT娘.cmd`；保留 `installation.json` 与个人数据，不要先卸载或删除配置。
 
 ## 下载与安装
 
 本项目仓库：[holenc/codex-dragon-girl-custom](https://github.com/holenc/codex-dragon-girl-custom)
 
-1. 从[本项目 Releases](https://github.com/holenc/codex-dragon-girl-custom/releases/latest)下载 `gpt-niang-usage-widget-v2.0.5-windows.zip` 与 `SHA256SUMS.txt`，核对校验值。
+1. 从[本项目 Releases](https://github.com/holenc/codex-dragon-girl-custom/releases/latest)下载 `gpt-niang-usage-widget-v2.0.6-windows.zip` 与 `SHA256SUMS.txt`，核对校验值。
 2. 完整解压到长期保留的普通目录，双击 `安装GPT娘.cmd`。请先安装并登录 Codex 桌面客户端。需要 Node.js 24+；安装器优先使用已有 Node，或检测 Codex Primary Runtime 自带的 Node。
 3. 安装器在这台电脑重新生成程序路径、插件注册和启动配置；已有个人设置会保留，新安装使用默认设置。安装包不包含作者的账户、聊天、授权记录或桌面坐标。
 4. 如使用授权气泡，请在 Codex 的 Hooks 页面检查并信任 GPT Niang 的 PermissionRequest Hook。不会替用户修改信任记录，也不会自动同意任何操作。
@@ -81,7 +85,11 @@
 
 ## English
 
-**GPT Dragon Girl Bubble Plugin, v2.0.5.** Windows quota, task-state and approval bubbles. Non-commercial use only.
+**GPT Dragon Girl Bubble Plugin, v2.0.6.** Windows quota, task-state and approval bubbles. Non-commercial use only.
+
+### Version 2.0.6
+
+Harden updater startup, runtime recovery and error feedback, with real isolated headless upgrade, rollback and restart-recovery checks. An old updater that cannot launch needs one full manual upgrade to 2.0.5 or later before subsequent checks can use this path.
 
 ### Version 2.0.5
 
@@ -104,7 +112,7 @@ Fix missing running-chat indicators for resumed/imported chats by reconciling li
 - Check this repository for updates at startup and every 24 hours while running. Manual checks and rate-limit backoff remain available.
 - Simplify version labels and hide internal build identifiers.
 
-**Upgrading from 2.0.0 / 2.0.1:** this download uses a layout compatible with the old updater. Check for updates in the pet menu and confirm **2.0.5** afterwards. If an earlier failure left an abnormal update state, exit the pet, extract the complete release over the original installation, and run `安装GPT娘.cmd`. Keep `installation.json` and personal data; do not uninstall or delete settings first.
+**Upgrading from 2.0.0 / 2.0.1:** this download uses a layout compatible with the old updater. Check for updates in the pet menu and confirm **2.0.6** afterwards. If an earlier failure left an abnormal update state, exit the pet, extract the complete release over the original installation, and run `安装GPT娘.cmd`. Keep `installation.json` and personal data; do not uninstall or delete settings first.
 
 ### Original project and credits
 
