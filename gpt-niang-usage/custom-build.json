@@ -1,6 +1,6 @@
 {
   "name": "GPT龙娘气泡插件",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "distribution": "holenc-custom",
   "upstream": {
     "repository": "https://github.com/T7moris/GPT-Niang",

@@ -11,7 +11,8 @@ function Assert-WidgetUpdateTransaction($Journal,[string]$AgentDir) {
   if([IO.Path]::GetFullPath($Journal.appDir)-ine (Join-Path $root 'gpt-niang-usage') -or !(Split-Path $root -Leaf) -or !(Split-Path (Split-Path $root -Parent) -Leaf)){throw 'Unsafe program root.'}
   Assert-WidgetNoReparsePoint $root
   Assert-WidgetNoReparsePoint $Journal.dataDir
-  for($dir=$root;$dir;$dir=Split-Path $dir -Parent){if(Test-Path -LiteralPath (Join-Path $dir '.git')){throw 'Source checkout cannot be replaced by the updater.'}}
+  $protection=Get-WidgetSourceProtection $Journal.appDir
+  if($protection.blocked){throw ('Source checkout cannot be replaced by the updater: '+$protection.reason)}
   $job=Join-Path $Journal.dataDir ('updates\'+$Journal.token)
   Assert-WidgetUpdateChildPath $Journal.candidate $job
   if([IO.Path]::GetFullPath($Journal.archive)-ine (Join-Path $job 'release.zip')){throw 'Unexpected update archive path.'}

@@ -1,3 +1,4 @@
+param([switch]$AncestorGit)
 # Optional live public-release check. It cannot install: the isolated fixture
 # uses version 99.99.99, and its configuration, binding and locks are temporary.
 $ErrorActionPreference='Stop'
@@ -7,11 +8,18 @@ $app=Split-Path $PSScriptRoot -Parent
 . (Join-Path $app 'runtime\runtime-paths.ps1')
 . ([ScriptBlock]::Create([IO.File]::ReadAllText((Join-Path $app 'runtime\update-ui.ps1'),[Text.Encoding]::UTF8)))
 $root=Join-Path ([IO.Path]::GetTempPath()) ('gn-update-bootstrap-'+[guid]::NewGuid().ToString('N'))
-$testApp=Join-Path $root 'app';$script:dataDir=Join-Path $root 'state';$agent=Join-Path $root 'agent'
+$testApp=Join-Path $root 'install\gpt-niang-usage';$script:dataDir=Join-Path $root 'state';$agent=Join-Path $root 'agent'
 $live=Read-WidgetUpdateJson (Join-Path $app 'installation.json')
 $script:liveNode=$live.nodePath;$script:liveCodex=$live.codexPath
 try{
  foreach($p in @($testApp,$script:dataDir,$agent)){$null=[IO.Directory]::CreateDirectory($p)}
+ if($AncestorGit){
+   & git init -q $root
+   if($LASTEXITCODE-ne 0){throw 'Cannot create isolated workspace repository'}
+   [IO.File]::WriteAllText((Join-Path $root 'workspace-note.txt'),'Tracked sibling workspace file')
+   & git -c ('safe.directory='+$root) -c core.fsmonitor=false -C $root add -- workspace-note.txt
+   if($LASTEXITCODE-ne 0){throw 'Cannot initialize isolated workspace index'}
+ }
  foreach($name in @('runtime','.codex-plugin')){Copy-Item -LiteralPath (Join-Path $app $name) -Destination $testApp -Recurse}
  foreach($name in @('package.json','custom-build.json')){Copy-Item -LiteralPath (Join-Path $app $name) -Destination $testApp}
  $script:appDir=$testApp;$script:configPath=Join-Path $testApp 'installation.json'

@@ -1,4 +1,4 @@
-﻿param([switch]$KeepFixture)
+﻿param([switch]$KeepFixture,[switch]$AncestorGit)
 # Optional real Codex CLI / Task Scheduler test. It uses a private Codex home,
 # a dedicated task name, temporary shortcut and launcher, and never opens a GUI.
 $ErrorActionPreference='Stop'
@@ -85,6 +85,13 @@ try {
   $null=New-Item -ItemType Directory -Path $data -Force
   $null=New-Item -ItemType Directory -Path (Join-Path $testRoot 'startup') -Force
   $null=New-Item -ItemType Directory -Path (Join-Path $testRoot 'codex-home') -Force
+  if($AncestorGit){
+    & git init -q $testRoot
+    if($LASTEXITCODE-ne 0){throw 'Cannot create isolated workspace repository'}
+    [IO.File]::WriteAllText((Join-Path $testRoot 'workspace-note.txt'),'Tracked sibling workspace file')
+    & git -c ('safe.directory='+$testRoot) -c core.fsmonitor=false -C $testRoot add -- workspace-note.txt
+    if($LASTEXITCODE-ne 0){throw 'Cannot initialize isolated workspace index'}
+  }
   Copy-TestPackage (Split-Path $app -Parent) '1.3.2'
   . (Join-Path $app 'runtime\supervisor-task.ps1')
   . (Join-Path $app 'runtime\update-common.ps1')

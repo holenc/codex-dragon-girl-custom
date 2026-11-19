@@ -38,12 +38,25 @@ export function updatePreferences(dataDir) {
 export function checkDue(state,startedAt,now=Date.now()) {
   return now>=Math.max(startedAt+30000,Number(state?.nextCheckAt)||0);
 }
-export function isGitCheckout(directory) {
-  for(let dir=path.resolve(directory);;dir=path.dirname(dir)) {
-    if(fs.existsSync(path.join(dir,'.git')))return true;
-    if(path.dirname(dir)===dir)return false;
+export function sourceProtection(directory,{runGit=spawnSync}={}) {
+  const app=path.resolve(directory),root=path.dirname(app);
+  if(fs.existsSync(path.join(root,'.gpt-niang-source')))return {blocked:true,reason:'explicit-source'};
+  if([app,root].some(dir=>fs.existsSync(path.join(dir,'.git'))))return {blocked:true,reason:'program-repository'};
+  for(let dir=path.dirname(root);;dir=path.dirname(dir)){
+    if(fs.existsSync(path.join(dir,'.git'))){
+      const relative=path.relative(dir,root).split(path.sep).join('/');
+      // Inspect only this directory's index. The scoped safe.directory applies
+      // only to this read-only invocation; never change global Git settings or
+      // run fsmonitor hooks. An unavailable probe stays protected.
+      const env={...process.env,GIT_OPTIONAL_LOCKS:'0'};for(const key of ['GIT_DIR','GIT_WORK_TREE','GIT_INDEX_FILE','GIT_COMMON_DIR'])delete env[key];
+      const result=runGit('git',['-c','core.fsmonitor=false','-c','safe.directory='+dir,'-C',dir,'ls-files','--cached','-z','--',':(literal)'+relative+'/'],{windowsHide:true,encoding:'utf8',timeout:5000,maxBuffer:1024*1024,env});
+      if(result.error||result.status!==0||typeof result.stdout!=='string')return {blocked:true,reason:'ancestor-unverified'};
+      return result.stdout.length?{blocked:true,reason:'ancestor-tracked'}:{blocked:false,reason:'ancestor-untracked'};
+    }
+    if(path.dirname(dir)===dir)return {blocked:false,reason:'standalone'};
   }
 }
+export function isGitCheckout(directory){return sourceProtection(directory).blocked;}
 export function allowedUrl(value,{api=false}={}) {
   const url=new URL(value);
   if(url.protocol!=='https:' || url.username || url.password || url.port || url.hash)throw new Error('Untrusted update URL');
@@ -288,7 +301,8 @@ async function performUpdate(config,{mode='manual',agentDir=config.updateAgent??
   if(custom?.updates?.mode==='manual-only' && mode!=='cleanup'){
     report({phase:'manual-only',message:'自动更新已关闭，请手动更新。',nextCheckAt:0});return;
   }
-  if(isGitCheckout(config.appDir)){report({phase:'source',message:'源码目录请使用 Git 更新，或另行安装 Release。'});return;}
+  const protection=sourceProtection(config.appDir);
+  if(protection.blocked){report({phase:'source',sourceReason:protection.reason,message:protection.reason==='ancestor-unverified'?'上级仓库状态无法核对；请在独立安装目录使用 Release，或检查 Git 是否可用。':'程序源码由 Git 管理或标记为维护目录；请使用 Git 更新或独立安装 Release。'});return;}
   if(Date.now()<(state.retryAfterAt??0)){report({phase:'rate-limited',message:'GitHub 限流，请在允许重试的时间之后检查。'});return;}
   if(automatic && (!updatePreferences(config.dataDir).automatic || (mode==='automatic' && Date.now()<(state.nextCheckAt??0))))return;
   let lock,jobDir;

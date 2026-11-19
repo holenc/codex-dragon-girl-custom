@@ -32,6 +32,31 @@ function Get-WidgetFileHash([string]$File) {
   try{return [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-','')}
   finally{$sha.Dispose();$stream.Dispose()}
 }
+function Get-WidgetSourceProtection([string]$AppDir) {
+  $app=[IO.Path]::GetFullPath($AppDir).TrimEnd('\');$root=Split-Path $app -Parent
+  if(Test-Path -LiteralPath (Join-Path $root '.gpt-niang-source')){return [pscustomobject]@{blocked=$true;reason='explicit-source'}}
+  foreach($dir in @($app,$root)){if(Test-Path -LiteralPath (Join-Path $dir '.git')){return [pscustomobject]@{blocked=$true;reason='program-repository'}}}
+  for($dir=Split-Path $root -Parent;$dir;$dir=Split-Path $dir -Parent){
+    if(!(Test-Path -LiteralPath (Join-Path $dir '.git'))){continue}
+    $relative=$root.Substring($dir.TrimEnd('\').Length).TrimStart('\').Replace('\','/')
+    $start=[Diagnostics.ProcessStartInfo]::new();$start.FileName='git'
+    $gitDir=$dir.Replace('\','/')
+    $start.Arguments='-c core.fsmonitor=false -c "safe.directory='+$gitDir+'" -C "'+$gitDir+'" ls-files --cached -z -- ":(literal)'+$relative+'/"'
+    $start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
+    $start.EnvironmentVariables['GIT_OPTIONAL_LOCKS']='0'
+    foreach($key in @('GIT_DIR','GIT_WORK_TREE','GIT_INDEX_FILE','GIT_COMMON_DIR')){$start.EnvironmentVariables.Remove($key)}
+    $process=[Diagnostics.Process]::new();$process.StartInfo=$start
+    try{
+      if(!$process.Start()){throw 'Cannot inspect Git index'}
+      $stdout=$process.StandardOutput.ReadToEndAsync();$stderr=$process.StandardError.ReadToEndAsync()
+      if(!$process.WaitForExit(5000)){try{$process.Kill()}catch{};throw 'Git index inspection timed out'}
+      if($process.ExitCode-ne 0){throw 'Git index inspection failed'}
+      if($stdout.Result.Length){return [pscustomobject]@{blocked=$true;reason='ancestor-tracked'}}
+      return [pscustomobject]@{blocked=$false;reason='ancestor-untracked'}
+    }catch{return [pscustomobject]@{blocked=$true;reason='ancestor-unverified'}}finally{$process.Dispose()}
+  }
+  return [pscustomobject]@{blocked=$false;reason='standalone'}
+}
 function Enter-WidgetUpdateLock {
   param([string]$AgentDir=(Get-WidgetUpdateAgentDir),[string]$Token,[int]$OwnerPid=$PID)
   $null=New-Item -ItemType Directory -Path $AgentDir -Force

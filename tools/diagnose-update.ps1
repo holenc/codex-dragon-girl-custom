@@ -44,12 +44,15 @@ $preferences=Read-DiagnosticJson (Join-Path $data 'update-preferences.json')
 $journal=Read-DiagnosticJson (Join-Path $agent 'update-transaction.json')
 $lock=Read-DiagnosticJson (Join-Path $agent 'update.lock\owner.json')
 $git=$false;for($dir=$AppDir;$dir;$dir=Split-Path $dir -Parent){if(Test-Path -LiteralPath (Join-Path $dir '.git')){$git=$true;break}}
+$programRoot=Split-Path $AppDir -Parent
+$directGit=(Test-Path -LiteralPath (Join-Path $AppDir '.git')) -or (Test-Path -LiteralPath (Join-Path $programRoot '.git'))
+$sourceMarker=Test-Path -LiteralPath (Join-Path $programRoot '.gpt-niang-source')
 $report=[ordered]@{
   reportVersion=1
   versions=@{installed=$config.version;package=$manifest.version;plugin=$plugin.version}
   executables=@{nodeExists=[IO.File]::Exists([string]$config.nodePath);codexExists=[IO.File]::Exists([string]$config.codexPath)}
-  registration=@{bindingMatches=([string]$binding.appDir-ieq $AppDir);isGitCheckout=$git;updateMode=$policy.updates.mode;repository=$policy.updates.repository;automatic=($preferences.automatic-ne $false)}
-  update=@{phase=$state.phase;message=$state.message;targetVersion=$state.version;ageMs=(Diagnostic-Age $state.at);nextCheckAt=$state.nextCheckAt;retryAfterAt=$state.retryAfterAt}
+  registration=@{bindingMatches=([string]$binding.appDir-ieq $AppDir);isGitCheckout=$git;programRepository=$directGit;ancestorRepositoryOnly=($git -and !$directGit);maintenanceMarker=$sourceMarker;updateMode=$policy.updates.mode;repository=$policy.updates.repository;automatic=($preferences.automatic-ne $false)}
+  update=@{phase=$state.phase;message=$state.message;sourceReason=$state.sourceReason;targetVersion=$state.version;ageMs=(Diagnostic-Age $state.at);nextCheckAt=$state.nextCheckAt;retryAfterAt=$state.retryAfterAt}
   widget=@{runtimeProcessVisible=(Test-DiagnosticProcess $runtime.pid);presenceAgeMs=(Diagnostic-Age $presence.at);visible=$presence.visible}
   idle=@{ageMs=(Diagnostic-Age $idle.at);menu=$idle.menu;editor=$idle.editor;drag=$idle.drag;workerBusy=$worker.busy;workerAgeMs=(Diagnostic-Age $worker.at)}
   lock=@{exists=!!$lock;ownerAlive=(Test-DiagnosticProcess $lock.pid);helperAlive=(Test-DiagnosticProcess $lock.helperPid)}
