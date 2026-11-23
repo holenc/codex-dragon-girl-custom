@@ -58,10 +58,11 @@ function Start-TemporaryCompletion {
     $style=$script:completionTemporary.style.ToInt64()-bor 0x08000020
     [CompletionWindowLayer]::SetWindowLongPtr($script:widgetHandle,-20,[IntPtr]$style)|Out-Null
     $script:window.Topmost=$true
-    # Detaching removes the host clip. Fit an off-screen reminder temporarily,
-    # without writing desktop/drag preferences or moving an already-safe one.
+    # Only host-following reminders need recovery from the host clip. Desktop
+    # placement intentionally allows transparent window padding off-screen;
+    # fitting that full rectangle would shift the character on every reminder.
     $flags=0x13;$x=0;$y=0;$rect=New-Object CompletionWindowLayer+Rect
-    if([CompletionWindowLayer]::GetWindowRect($script:widgetHandle,[ref]$rect)){
+    if($script:followHost -and [CompletionWindowLayer]::GetWindowRect($script:widgetHandle,[ref]$rect)){
       $area=[Windows.Forms.Screen]::FromHandle($script:widgetHandle).WorkingArea
       $x=[Math]::Max($area.Left,[Math]::Min($area.Right-($rect.Right-$rect.Left),$rect.Left))
       $y=[Math]::Max($area.Top,[Math]::Min($area.Bottom-($rect.Bottom-$rect.Top),$rect.Top))

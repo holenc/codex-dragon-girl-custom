@@ -10,10 +10,10 @@ function Get-WidgetQuotaExpression($Status,[long]$Now=[DateTimeOffset]::UtcNow.T
   $weekSpent=$week -and (($null-ne $week.remaining -and [double]$week.remaining-le 0) -or ($null-ne $week.used -and [double]$week.used-ge 100)) -and (!$week.resetsAt -or [double]$week.resetsAt*1000-gt $Now)
   $balance=$Status.credits.balance
   if(($shortSpent -or $weekSpent) -and ($Status.credits.unlimited-eq $true -or ($null-ne $balance -and [double]$balance-gt 0))){return 'money'}
-  if(!$shortSpent){return 'normal'}
+  if(!$shortSpent -and !$weekSpent){return 'normal'}
   if($null-eq $balance){return 'normal'}
   if([double]$balance-lt 0){return 'normal'}
-  if($week -and $null-ne $week.remaining -and [double]$week.remaining-lt 5 -and (!$week.resetsAt -or [double]$week.resetsAt*1000-gt $Now)){return 'closed'}
+  if($weekSpent -or ($week -and $null-ne $week.remaining -and [double]$week.remaining-lt 5 -and (!$week.resetsAt -or [double]$week.resetsAt*1000-gt $Now))){return 'closed'}
   return 'drooling'
 }
 

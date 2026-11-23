@@ -35,6 +35,29 @@ function Test-WidgetCodexDesktopProcess($Process,[int]$SessionId) {
     $Process.ExecutablePath-match '(?i)\\(?:OpenAI\.Codex_[^\\]+\\app|OpenAI\\Codex(?:\\app)?)\\(?:ChatGPT|Codex)\.exe$' -and
     [string]$Process.CommandLine -and $Process.CommandLine-notmatch '(?i)(?:^|\s)--type(?:=|\s)'
 }
+function Get-WidgetDesktopAppServers($Processes,[int]$SessionId) {
+  $byId=@{}
+  foreach($record in $Processes){$byId[[int]$record.ProcessId]=$record}
+  foreach($server in $Processes){
+    if($server.SessionId-ne $SessionId -or $server.Name-ine 'codex.exe' -or
+      $server.CommandLine-notmatch '(?i)(?:^|\s)app-server(?:\s|$)' -or
+      $server.ExecutablePath-notmatch '(?i)^(.*)\\resources\\codex\.exe$'){continue}
+    $appRoot=$Matches[1]
+    $child=$server;$seen=@{}
+    for($depth=0;$depth-lt 16;$depth++){
+      $parentId=[int]$child.ParentProcessId
+      if($seen.ContainsKey($parentId) -or !$byId.ContainsKey($parentId)){break}
+      $seen[$parentId]=$true;$parent=$byId[$parentId]
+      # Keep ancestry inside this installed client and Windows session. Creation
+      # times prevent an exited parent's reused PID from becoming a false match.
+      if($parent.SessionId-ne $SessionId -or !$parent.CreationDate -or !$child.CreationDate -or
+        $parent.CreationDate-gt $child.CreationDate -or
+        $parent.ExecutablePath-notin @((Join-Path $appRoot 'ChatGPT.exe'),(Join-Path $appRoot 'Codex.exe'))){break}
+      if(Test-WidgetCodexDesktopProcess $parent $SessionId){$server;break}
+      $child=$parent
+    }
+  }
+}
 function Clear-WidgetLifetimeProcesses {
   if($script:lifetimeSignal){$script:lifetimeSignal.Track(@())}
   foreach($process in @($script:lifetimeProcesses)){if($process){$process.Dispose()}}
@@ -67,8 +90,7 @@ function Test-WidgetCodexDesktopRunning([switch]$Refresh) {
   Clear-WidgetLifetimeProcesses
   $script:lifetimeProcesses=$handles
   if($script:lifetimeSignal){$script:lifetimeSignal.Track([Diagnostics.Process[]]$handles)}
-  $desktopIds=@($desktopProcesses.ProcessId)
-  $servers=@($processes|Where-Object{$_.ParentProcessId-in $desktopIds -and $_.Name-ieq 'codex.exe' -and $_.CommandLine-match '\bapp-server\b'}|Sort-Object CreationDate)
+  $servers=@(Get-WidgetDesktopAppServers $processes $sessionId | Sort-Object CreationDate)
   $script:activityAppServerStartedAt=if($servers.Count){$servers[0].CreationDate.ToUniversalTime().ToString('o')}else{$null}
   # Events wake us immediately; these scans recover from missed/unavailable events.
   $script:lifetimeNextScan=$now.AddSeconds($(if($handles.Count){10}else{1}))

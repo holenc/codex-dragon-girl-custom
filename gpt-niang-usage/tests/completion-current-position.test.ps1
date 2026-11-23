@@ -68,7 +68,7 @@ try{
   Assert ((Rect-Key)-eq $beforeRect) 'Temporary topmost never changes native position or physical size'
   Assert ($script:window.Topmost -and ([CompletionWindowLayer]::GetWindowLongPtr($script:widgetHandle,-20).ToInt64()-band 8)-ne 0) 'Original widget really enters the topmost band'
   Assert ([CompletionWindowLayer]::GetWindowLongPtr($script:widgetHandle,-8)-eq [IntPtr]::Zero) 'Temporary reminder is detached from minimized/covered Codex ownership'
-  Assert ($script:ui.QuoteText.Text-ceq "Codex`n有回复已结束") 'Original reminder retains one complete Chinese line'
+  Assert ($script:ui.QuoteText.Text-ceq "已严肃回复`nᗜˬᗜ") 'Original reminder retains the configured completion text'
   Save-Settings;$prefs=Get-Content -LiteralPath $settingsFile -Raw -Encoding UTF8|ConvertFrom-Json
   foreach($pair in @(@{k='scale';v=0.6},@{k='bubbleScale';v=1.0},@{k='left';v=54.4},@{k='bottom';v=87.2},@{k='followHost';v=$true},@{k='side';v='left'})){
     Assert ($prefs.($pair.k)-eq $pair.v) ('Temporary layer leaked into saved '+$pair.k)
@@ -116,6 +116,12 @@ try{
   Assert ($shownRect.Left-ge $area.Left -and $shownRect.Top-ge $area.Top -and $shownRect.Right-le $area.Right -and $shownRect.Bottom-le $area.Bottom) 'Off-screen completion must fit inside the monitor work area'
   Set-CompletionNotificationEnabled $false;Drain-Wpf 550
   Assert ((Rect-Key)-eq $offscreenRect) 'Temporary screen fitting changed the original placement after dismissal'
+  $script:followHost=$false;Set-CompletionNotificationEnabled $true
+  Emit 'desktop-edge';Tick-CompletionNotifications $false;Drain-Wpf 150
+  Assert ([bool]$script:completionTemporary) 'Desktop edge reminder did not open'
+  Assert ((Rect-Key)-eq $offscreenRect) 'Desktop completion moved the character to fit transparent window padding'
+  Set-CompletionNotificationEnabled $false;Drain-Wpf 550
+  Assert ((Rect-Key)-eq $offscreenRect) 'Desktop completion dismissal changed the character placement'
   Write-Output ('PASS: '+$script:checks+' current-position reminder checks: same HWND, no move/resize, topmost/owner/style restoration, fullscreen exit, return, coalescing, saved preferences and hidden state')
 }finally{
   Stop-CompletionMonitor

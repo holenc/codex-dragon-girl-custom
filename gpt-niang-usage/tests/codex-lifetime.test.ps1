@@ -8,6 +8,22 @@ $script:records=@([pscustomobject]@{SessionId=$self.SessionId;Name='ChatGPT.exe'
 $script:queries=0
 function Get-CimInstance { $script:queries++;return $script:records }
 try{
+ $main=$script:records[0].PSObject.Copy()
+ $utility=$main.PSObject.Copy();$utility.ProcessId=101;$utility.ParentProcessId=$main.ProcessId;$utility.CommandLine='ChatGPT.exe --type=utility';$utility.CreationDate=$main.CreationDate.AddSeconds(1)
+ $server=$utility.PSObject.Copy();$server.ProcessId=102;$server.ParentProcessId=101;$server.Name='codex.exe';$server.ExecutablePath=Join-Path (Split-Path $main.ExecutablePath) 'resources\codex.exe';$server.CommandLine='codex.exe app-server';$server.CreationDate=$main.CreationDate.AddSeconds(2)
+ Assert (@(Get-WidgetDesktopAppServers @($main,$utility,$server) $self.SessionId).Count-eq 1) 'Utility-owned app-server was lost'
+ $server.ParentProcessId=$main.ProcessId
+ Assert (@(Get-WidgetDesktopAppServers @($main,$server) $self.SessionId).Count-eq 1) 'Direct app-server was lost'
+ $server.ParentProcessId=101;$server.CommandLine='codex.exe exec-server'
+ Assert (@(Get-WidgetDesktopAppServers @($main,$utility,$server) $self.SessionId).Count-eq 0) 'Exec server accepted'
+ $server.CommandLine='codex.exe app-server';$server.SessionId=$self.SessionId+1
+ Assert (@(Get-WidgetDesktopAppServers @($main,$utility,$server) $self.SessionId).Count-eq 0) 'Foreign session server accepted'
+ $server.SessionId=$self.SessionId;$utility.ExecutablePath='C:\Other\ChatGPT.exe'
+ Assert (@(Get-WidgetDesktopAppServers @($main,$utility,$server) $self.SessionId).Count-eq 0) 'Foreign client ancestor accepted'
+ $utility.ExecutablePath=$main.ExecutablePath;$utility.CreationDate=$server.CreationDate.AddSeconds(1)
+ Assert (@(Get-WidgetDesktopAppServers @($main,$utility,$server) $self.SessionId).Count-eq 0) 'Reused parent PID accepted'
+ $utility.CreationDate=$main.CreationDate.AddSeconds(1);$utility.ParentProcessId=$server.ProcessId
+ Assert (@(Get-WidgetDesktopAppServers @($main,$utility,$server) $self.SessionId).Count-eq 0) 'Cyclic ancestry accepted'
  Assert (Test-WidgetCodexDesktopRunning -Refresh) 'Validated main process was not retained'
  for($i=0;$i-lt 20;$i++){Assert (Test-WidgetCodexDesktopRunning) 'Live cached process was lost'}
  Assert ($script:queries-eq 1) 'Normal ticks repeated the WMI query'
